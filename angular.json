@@ -103,6 +103,39 @@
           }
         }
       }
+    },
+    "praetor-auth": {
+      "projectType": "library",
+      "root": "projects/praetor-auth",
+      "sourceRoot": "projects/praetor-auth/src",
+      "prefix": "praetor",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/praetor-auth/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/praetor-auth/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/praetor-auth/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "tsConfig": "projects/praetor-auth/tsconfig.spec.json",
+            "polyfills": [
+              "zone.js",
+              "zone.js/testing"
+            ]
+          }
+        }
+      }
     }
   }
 }

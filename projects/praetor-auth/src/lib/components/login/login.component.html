@@ -14,6 +14,7 @@
             type="email"
             formControlName="email"
             autocomplete="email"
+            autofocus
             class="pl-12 w-full bg-white text-black dark:bg-gray-800 dark:text-white"
             [style]="{ width: '100%', paddingLeft: '3rem' }"
             [ngClass]="{ 'p-invalid': emailFc.invalid && emailFc.touched }"
@@ -40,6 +41,7 @@
             inputClass="bg-white text-black dark:bg-gray-800 dark:text-white"
             [ngClass]="{ 'p-invalid': passwordFc.invalid && passwordFc.touched }"
             autocomplete="current-password"
+            (keydown.enter)="onLogin()"
           ></p-password>
         </div>
         <p *ngIf="passwordFc.invalid && passwordFc.touched" class="text-sm text-red-500 mt-1">
@@ -53,10 +55,15 @@
       <button
         pButton
         type="submit"
-        label="Log in"
+        [label]="loading() ? 'Logging in...' : 'Log in'"
+        [icon]="loading() ? 'pi pi-spin pi-spinner' : ''"
         class="w-full"
-        [disabled]="loginForm.invalid"
+        [disabled]="loginForm.invalid || loading()"
       ></button>
+
     </form>
   </div>
+
+  <p-toast></p-toast>
+
 </div>

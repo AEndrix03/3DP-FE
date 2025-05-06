@@ -1,9 +1,11 @@
-import {Component} from '@angular/core';
+import {Component, signal, WritableSignal} from '@angular/core';
 import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {CommonModule} from '@angular/common';
 import {InputTextModule} from 'primeng/inputtext';
 import {PasswordModule} from 'primeng/password';
 import {ButtonModule} from 'primeng/button';
+import {ToastModule} from 'primeng/toast';
+import {MessageService} from 'primeng/api';
 
 @Component({
   selector: 'praetor-login',
@@ -13,15 +15,18 @@ import {ButtonModule} from 'primeng/button';
     ReactiveFormsModule,
     InputTextModule,
     PasswordModule,
-    ButtonModule
+    ButtonModule,
+    ToastModule
   ],
   templateUrl: './login.component.html',
+  providers: [MessageService]
 
 })
 export class LoginComponent {
   readonly loginForm: FormGroup;
+  readonly loading: WritableSignal<boolean> = signal(false);
 
-  constructor(private readonly fb: FormBuilder) {
+  constructor(private readonly fb: FormBuilder, private readonly messageService: MessageService) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', Validators.required],
@@ -38,7 +43,16 @@ export class LoginComponent {
 
   onLogin(): void {
     if (this.loginForm.valid) {
-      console.log('Login data:', this.loginForm.value);
+      this.loading.set(true);
+      setTimeout(() => {
+        console.log('Login data:', this.loginForm.value);
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Login successful',
+          detail: 'Welcome back!',
+        });
+        this.loading.set(false);
+      }, 1500);
     } else {
       this.loginForm.markAllAsTouched();
     }

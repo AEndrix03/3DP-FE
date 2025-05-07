@@ -28,8 +28,12 @@ export class LoginComponent {
 
   constructor(private readonly fb: FormBuilder, private readonly messageService: MessageService) {
     this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', Validators.required],
+      email: ['', {
+        updateOn: 'blur', validators: [Validators.required, Validators.email]
+      }],
+      password: ['', {
+        updateOn: 'blur', validators: [Validators.required]
+      }],
     });
   }
 

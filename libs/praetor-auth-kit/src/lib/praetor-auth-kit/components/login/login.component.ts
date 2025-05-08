@@ -1,11 +1,19 @@
-import {Component, signal, WritableSignal} from '@angular/core';
-import {FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
-import {CommonModule} from '@angular/common';
-import {InputTextModule} from 'primeng/inputtext';
-import {PasswordModule} from 'primeng/password';
-import {ButtonModule} from 'primeng/button';
-import {ToastModule} from 'primeng/toast';
-import {MessageService} from 'primeng/api';
+import { Component, signal, WritableSignal } from '@angular/core';
+import {
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { InputTextModule } from 'primeng/inputtext';
+import { PasswordModule } from 'primeng/password';
+import { ButtonModule } from 'primeng/button';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { AuthenticationService } from '../../services/authentication.service';
+import { catchError, filter, finalize, of, tap } from 'rxjs';
 
 @Component({
   selector: 'praetor-login',
@@ -16,24 +24,35 @@ import {MessageService} from 'primeng/api';
     InputTextModule,
     PasswordModule,
     ButtonModule,
-    ToastModule
+    ToastModule,
   ],
   templateUrl: './login.component.html',
-  providers: [MessageService]
-
+  providers: [MessageService],
 })
 export class LoginComponent {
   readonly loginForm: FormGroup;
   readonly loading: WritableSignal<boolean> = signal(false);
 
-  constructor(private readonly fb: FormBuilder, private readonly messageService: MessageService) {
+  constructor(
+    private readonly fb: FormBuilder,
+    private readonly messageService: MessageService,
+    private readonly authenticationService: AuthenticationService
+  ) {
     this.loginForm = this.fb.group({
-      email: ['', {
-        updateOn: 'blur', validators: [Validators.required, Validators.email]
-      }],
-      password: ['', {
-        updateOn: 'blur', validators: [Validators.required]
-      }],
+      email: [
+        '',
+        {
+          updateOn: 'blur',
+          validators: [Validators.required, Validators.email],
+        },
+      ],
+      password: [
+        '',
+        {
+          updateOn: 'blur',
+          validators: [Validators.required],
+        },
+      ],
     });
   }
 
@@ -48,15 +67,29 @@ export class LoginComponent {
   onLogin(): void {
     if (this.loginForm.valid) {
       this.loading.set(true);
-      setTimeout(() => {
-        console.log('Login data:', this.loginForm.value);
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Login successful',
-          detail: 'Welcome back!',
-        });
-        this.loading.set(false);
-      }, 1500);
+      this.authenticationService
+        .login(this.loginForm.value)
+        .pipe(
+          catchError(() => {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Login failed',
+              detail: 'Email or password are incorrect',
+            });
+            return of(null);
+          }),
+          filter((res) => res != null),
+          tap(() =>
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Login successful',
+              detail: 'Welcome back!',
+            })
+          ),
+          tap((res) => console.log(res)),
+          finalize(() => this.loading.set(false))
+        )
+        .subscribe();
     } else {
       this.loginForm.markAllAsTouched();
     }

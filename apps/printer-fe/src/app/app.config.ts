@@ -8,9 +8,9 @@ import {
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import Preset from './primeng/preset';
-import { providePraetor } from '@3-dp-fe/praetor-auth-kit';
+import { authInterceptor, providePraetor } from '@3-dp-fe/praetor-auth-kit';
 import { environment } from './environments/environment';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -18,7 +18,7 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(appRoutes),
     provideAnimationsAsync(),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([authInterceptor])),
     providePraetor(environment.praetorApiUrl),
     providePrimeNG({
       theme: {

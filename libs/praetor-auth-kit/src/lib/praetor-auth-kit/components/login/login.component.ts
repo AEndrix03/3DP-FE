@@ -14,6 +14,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { AuthenticationService } from '../../services/authentication.service';
 import { catchError, filter, finalize, of, tap } from 'rxjs';
+import { AuthEventsService } from '../../services/auth-event.service';
 
 @Component({
   selector: 'praetor-login',
@@ -36,7 +37,8 @@ export class LoginComponent {
   constructor(
     private readonly fb: FormBuilder,
     private readonly messageService: MessageService,
-    private readonly authenticationService: AuthenticationService
+    private readonly authenticationService: AuthenticationService,
+    private readonly authEventService: AuthEventsService
   ) {
     this.loginForm = this.fb.group({
       email: [
@@ -86,7 +88,9 @@ export class LoginComponent {
               detail: 'Welcome back!',
             })
           ),
-          tap((res) => console.log(res)),
+          tap((res) =>
+            this.authEventService.emit({ type: 'loginSuccess', payload: res })
+          ),
           finalize(() => this.loading.set(false))
         )
         .subscribe();

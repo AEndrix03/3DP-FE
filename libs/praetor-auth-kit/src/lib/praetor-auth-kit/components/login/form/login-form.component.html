@@ -1,0 +1,64 @@
+<div class="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-md w-full max-w-md border border-gray-200">
+  <h1 class="text-3xl font-bold text-center mb-6 text-gray-900 dark:text-white">Login</h1>
+
+  <form [formGroup]="loginForm" (ngSubmit)="emitLoginEvent()" class="space-y-5">
+
+    <div>
+      <label for="email" class="block mb-1 font-medium text-gray-800 dark:text-gray-200">Email</label>
+      <div class="relative w-full">
+        <i class="pi pi-envelope absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        <input
+          pInputText
+          id="email"
+          type="email"
+          formControlName="email"
+          autocomplete="email"
+          autofocus
+          class="pl-12 w-full bg-white text-black dark:bg-gray-800 dark:text-white"
+          [style]="{ width: '100%', paddingLeft: '3rem' }"
+          [ngClass]="{ 'p-invalid': emailFc.invalid && emailFc.touched }"
+        />
+      </div>
+      <p *ngIf="emailFc.invalid && emailFc.touched" class="text-sm text-red-500 mt-1">
+        {{ emailFc.hasError('required') ? 'Email is required' : 'Invalid email format' }}
+      </p>
+    </div>
+
+    <div>
+      <label for="password" class="block mb-1 font-medium text-gray-800 dark:text-gray-200">Password</label>
+      <div class="relative w-full">
+        <i class="pi pi-lock absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+        <p-password
+          id="password"
+          formControlName="password"
+          toggleMask="true"
+          [feedback]="false"
+          inputId="real-password"
+          [style]="{width: '100%'}"
+          [inputStyle]="{ width: '100%', paddingLeft: '3rem' }"
+          class="w-full"
+          inputClass="bg-white text-black dark:bg-gray-800 dark:text-white"
+          [ngClass]="{ 'p-invalid': passwordFc.invalid && passwordFc.touched }"
+          autocomplete="current-password"
+          (keydown.enter)="emitLoginEvent()"
+        ></p-password>
+      </div>
+      <p *ngIf="passwordFc.invalid && passwordFc.touched" class="text-sm text-red-500 mt-1">
+        Password is required
+      </p>
+      <div class="text-right mt-1">
+        <a href="#" class="text-sm text-blue-600 hover:underline">Forgot password?</a>
+      </div>
+    </div>
+
+    <button
+      pButton
+      type="submit"
+      [label]="loading() ? 'Logging in...' : 'Log in'"
+      [icon]="loading() ? 'pi pi-spin pi-spinner' : ''"
+      class="w-full"
+      [disabled]="loginForm.invalid || loading()"
+    ></button>
+
+  </form>
+</div>

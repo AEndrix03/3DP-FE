@@ -2,7 +2,7 @@
   "name": "printer-fe",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
-  "prefix": "app",
+  "prefix": "printer",
   "sourceRoot": "apps/printer-fe/src",
   "tags": [],
   "targets": {

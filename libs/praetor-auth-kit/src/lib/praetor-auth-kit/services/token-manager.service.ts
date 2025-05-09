@@ -1,37 +1,45 @@
-import { AuthEvent, AuthEventsService } from './auth-event.service';
+import { AuthEventsService } from './auth-event.service';
 import { TokenStorageService } from './token-storage.service';
 import { Injectable } from '@angular/core';
 import { TokenRefreshService } from './token-refresh.service';
-import { Observable, tap } from 'rxjs';
+import { Subject, takeUntil, tap } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class TokenManagerService {
-  private readonly events$: Observable<AuthEvent>;
+  private readonly unsubscribe$ = new Subject<void>();
 
   constructor(
     private readonly storage: TokenStorageService,
-    private readonly events: AuthEventsService,
+    private readonly authEventsService: AuthEventsService,
     private readonly refreshTimer: TokenRefreshService
-  ) {
-    this.events$ = this.events.events$.pipe(
-      tap((event: AuthEvent) => {
-        if (event.type === 'loginSuccess') {
-          this.storage.saveTokens(
-            event.payload.accessToken,
-            event.payload.refreshToken
-          );
-          this.refreshTimer.start();
-        }
+  ) {}
 
-        if (event.type === 'logout') {
-          this.storage.clearTokens();
-          this.refreshTimer.stop();
-        }
+  public start(): void {
+    this.onLoginSuccess().subscribe();
+    this.onLogout().subscribe();
+  }
+
+  public stop(): void {
+    this.unsubscribe$.next();
+  }
+
+  private onLoginSuccess() {
+    return this.authEventsService.loginSuccess$.pipe(
+      takeUntil(this.unsubscribe$),
+      tap((payload) => {
+        this.storage.saveTokens(payload.accessToken, payload.refreshToken);
+        this.refreshTimer.start();
       })
     );
   }
 
-  public start(): void {
-    this.events$.subscribe();
+  private onLogout() {
+    return this.authEventsService.logout$.pipe(
+      takeUntil(this.unsubscribe$),
+      tap(() => {
+        this.storage.clearTokens();
+        this.refreshTimer.stop();
+      })
+    );
   }
 }

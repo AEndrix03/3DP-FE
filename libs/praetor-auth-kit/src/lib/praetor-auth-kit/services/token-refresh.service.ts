@@ -27,7 +27,7 @@ export class TokenRefreshService {
         }),
         catchError((err, caught) => {
           console.error('Token refresh failed:', err);
-          this.authEvents.emit({ type: 'logout' });
+          this.authEvents.logout();
           return caught;
         })
       )

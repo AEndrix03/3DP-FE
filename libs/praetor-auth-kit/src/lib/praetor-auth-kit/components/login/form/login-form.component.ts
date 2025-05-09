@@ -35,6 +35,7 @@ export class LoginFormComponent {
   readonly loading: InputSignal<boolean> = input(false);
 
   @Output() login = new EventEmitter<LoginRequestDto>();
+  @Output() changePassword = new EventEmitter<void>();
 
   constructor(private readonly fb: FormBuilder) {
     this.loginForm = this.fb.group({

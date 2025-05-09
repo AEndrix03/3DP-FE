@@ -5,6 +5,7 @@ import {
   AuthEventsService,
   LoginFormComponent,
   LoginRequestDto,
+  PraetorActionsService,
 } from '@3-dp-fe/praetor-auth-kit';
 import { Toast } from 'primeng/toast';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -23,7 +24,8 @@ export class LoginComponent {
   constructor(
     private readonly messageService: MessageService,
     private readonly authenticationService: AuthenticationService,
-    private readonly authEventService: AuthEventsService
+    private readonly authEventService: AuthEventsService,
+    private readonly praetorActionsService: PraetorActionsService
   ) {}
 
   doLogin(request: LoginRequestDto) {
@@ -37,12 +39,15 @@ export class LoginComponent {
         }),
         filter((payload) => payload != null),
         tap(() => this.showSuccess()),
-        tap((payload) =>
-          this.authEventService.emit({ type: 'loginSuccess', payload })
-        ),
+        tap((payload) => this.authEventService.loginSuccess(payload)),
+        tap(() => this.praetorActionsService.emitLoginAction()),
         finalize(() => this.loading.set(false))
       )
       .subscribe();
+  }
+
+  doChangePassword() {
+    this.praetorActionsService.emitChangePasswordAction();
   }
 
   private showSuccess(): void {

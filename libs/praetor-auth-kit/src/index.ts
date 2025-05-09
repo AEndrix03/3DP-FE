@@ -22,3 +22,7 @@ export * from './lib/praetor-auth-kit/services/token-refresh.service';
 export * from './lib/praetor-auth-kit/services/token-storage.service';
 export * from './lib/praetor-auth-kit/services/auth-event.service';
 export * from './lib/praetor-auth-kit/services/praetor-actions.service';
+
+export * from './lib/praetor-auth-kit/stores/user/user.store';
+
+export * from './lib/praetor-auth-kit/auth.routes';

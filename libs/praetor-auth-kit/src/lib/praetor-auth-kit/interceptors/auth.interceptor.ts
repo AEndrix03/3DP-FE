@@ -6,7 +6,10 @@ import {
   HttpRequest,
 } from '@angular/common/http';
 import { TokenStorageService } from '../services/token-storage.service';
-import { PRAETOR_BEARER_INCLUDE_URLS } from '../tokens/bearer-config.token';
+import {
+  PRAETOR_BEARER_EXCLUDE_URLS,
+  PRAETOR_BEARER_INCLUDE_URLS,
+} from '../tokens/bearer-config.token';
 import { Observable } from 'rxjs';
 
 export const authInterceptor: HttpInterceptorFn = (
@@ -15,9 +18,17 @@ export const authInterceptor: HttpInterceptorFn = (
 ): Observable<HttpEvent<any>> => {
   const tokenStorage = inject(TokenStorageService);
   const includeUrls = inject(PRAETOR_BEARER_INCLUDE_URLS);
+  const excludeUrls = inject(PRAETOR_BEARER_EXCLUDE_URLS);
 
   const token = tokenStorage.getAccessToken();
-  const shouldAttachToken = includeUrls.some((url) => req.url.includes(url));
+
+  const isExcluded = excludeUrls.some((pattern) => req.url.includes(pattern));
+
+  const isIncluded =
+    includeUrls.length === 0 ||
+    includeUrls.some((pattern) => req.url.includes(pattern));
+
+  const shouldAttachToken = !isExcluded && isIncluded;
 
   if (token && shouldAttachToken) {
     const authReq = req.clone({

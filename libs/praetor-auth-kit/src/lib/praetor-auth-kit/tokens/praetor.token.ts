@@ -2,6 +2,7 @@ import { Provider } from '@angular/core';
 import { PRAETOR_API_URL } from './api-url.token';
 import {
   PRAETOR_BEARER_ACCESS_TOKEN_NAME,
+  PRAETOR_BEARER_EXCLUDE_URLS,
   PRAETOR_BEARER_INCLUDE_URLS,
   PRAETOR_BEARER_REFRESH_TOKEN_NAME,
   PRAETOR_BEARER_STORAGE_STRATEGY,
@@ -12,7 +13,8 @@ export interface PraetorInjectionConfig {
   acccessToken?: string;
   refreshToken?: string;
   storageType: StorageStrategy;
-  interceptedUrls: string[];
+  includedUrls: string[];
+  excludedUrls: string[];
 }
 
 export function providePraetor(
@@ -40,10 +42,16 @@ export function providePraetor(
         useValue: config.storageType,
       });
     }
-    if (config.interceptedUrls) {
+    if (config.includedUrls) {
       providers.push({
         provide: PRAETOR_BEARER_INCLUDE_URLS,
-        useValue: config.interceptedUrls,
+        useValue: config.includedUrls,
+      });
+    }
+    if (config.excludedUrls) {
+      providers.push({
+        provide: PRAETOR_BEARER_EXCLUDE_URLS,
+        useValue: config.excludedUrls,
       });
     }
   }

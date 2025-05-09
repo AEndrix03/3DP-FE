@@ -1,4 +1,4 @@
 export const environment = {
   production: false,
-  praetorApiUrl: 'https://dev.aredegalli.it:5050',
+  praetorApiUrl: 'https://dev.aredegalli.it:5050/praetor',
 };

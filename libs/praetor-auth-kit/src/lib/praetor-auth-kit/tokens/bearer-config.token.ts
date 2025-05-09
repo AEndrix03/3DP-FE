@@ -31,3 +31,11 @@ export const PRAETOR_BEARER_INCLUDE_URLS = new InjectionToken<string[]>(
     factory: () => ['/praetor'],
   }
 );
+
+export const PRAETOR_BEARER_EXCLUDE_URLS = new InjectionToken<string[]>(
+  'PRAETOR_BEARER_EXCLUDE_URLS',
+  {
+    providedIn: 'root',
+    factory: () => ['/login'],
+  }
+);

@@ -4,11 +4,13 @@ import { Observable, Subject } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class PraetorActionsService {
   private readonly _login$: Subject<void> = new Subject<void>();
+  private readonly _logged$: Subject<void> = new Subject<void>();
   private readonly _logout$: Subject<void> = new Subject<void>();
   private readonly _changePassword$: Subject<void> = new Subject<void>();
   private readonly _changedPassword$: Subject<void> = new Subject<void>();
 
   public readonly login$: Observable<void> = this._login$.asObservable();
+  public readonly logged$: Observable<void> = this._logged$.asObservable();
   public readonly logout$: Observable<void> = this._logout$.asObservable();
   public readonly changePassword$: Observable<void> =
     this._changePassword$.asObservable();
@@ -17,6 +19,10 @@ export class PraetorActionsService {
 
   public emitLoginAction() {
     this._login$.next();
+  }
+
+  public emitLoggedAction() {
+    this._logged$.next();
   }
 
   public emitLogoutAction() {

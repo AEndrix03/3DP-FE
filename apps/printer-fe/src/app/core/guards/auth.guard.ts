@@ -1,18 +1,15 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
-import { userStore } from '@3-dp-fe/praetor-auth-kit';
+import { CanActivateFn, Router, UrlTree } from '@angular/router';
+import { TokenStorageService } from '@3-dp-fe/praetor-auth-kit';
 
-export const authGuard: CanActivateFn = () => {
-  const store = inject(userStore);
+export const authGuard: CanActivateFn = (): boolean | UrlTree => {
+  const tokenStorage = inject(TokenStorageService);
   const router = inject(Router);
 
-  const user = store.user();
-
-  if (user) {
+  const token = tokenStorage.getAccessToken();
+  if (token) {
     return true;
   }
 
-  const currentUrl = router.url;
-  router.navigate(['/login']).then();
-  return false;
+  return router.parseUrl('/login');
 };

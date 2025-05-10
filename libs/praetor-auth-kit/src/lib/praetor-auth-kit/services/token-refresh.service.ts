@@ -27,7 +27,7 @@ export class TokenRefreshService {
         }),
         catchError((err, caught) => {
           console.error('Token refresh failed:', err);
-          this.authEvents.logout();
+          this.authEvents.emitLogout();
           return caught;
         })
       )
@@ -40,5 +40,10 @@ export class TokenRefreshService {
   stop(): void {
     this.subscription?.unsubscribe();
     this.subscription = undefined;
+  }
+
+  restart() {
+    this.stop();
+    this.start();
   }
 }

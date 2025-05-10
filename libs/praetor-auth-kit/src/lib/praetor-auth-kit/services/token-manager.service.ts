@@ -1,17 +1,17 @@
+import { inject, Injectable } from '@angular/core';
+import { of, Subject, takeUntil, tap } from 'rxjs';
+import { catchError, filter, switchMap, take } from 'rxjs/operators';
 import { AuthEventsService } from './auth-event.service';
 import { TokenStorageService } from './token-storage.service';
-import { inject, Injectable } from '@angular/core';
 import { TokenRefreshService } from './token-refresh.service';
-import { of, Subject, takeUntil, tap } from 'rxjs';
-import { userStore } from '../stores/user/user.store';
-import { catchError, filter, switchMap } from 'rxjs/operators';
+import { AuthenticationService } from './authentication.service';
 import { UserService } from './user.service';
-import { PraetorActionsService } from './praetor-actions.service';
+import { UserDto } from '../models/user.models';
+import { userStore } from '../stores/user/user.store';
 
 @Injectable({ providedIn: 'root' })
 export class TokenManagerService {
   private readonly unsubscribe$ = new Subject<void>();
-
   private readonly userStore = inject(userStore);
 
   constructor(
@@ -19,47 +19,79 @@ export class TokenManagerService {
     private readonly authEventsService: AuthEventsService,
     private readonly refreshTimer: TokenRefreshService,
     private readonly userService: UserService,
-    private readonly praetorActionsService: PraetorActionsService
+    private readonly authenticationService: AuthenticationService
   ) {}
 
   public start(): void {
-    this.onLoginSuccess().subscribe();
-    this.onLogout().subscribe();
+    this.subscribeToLogin();
+    this.subscribeToLogout();
+    this.subscribeToTokenRefresh();
+    this.tryAutoRefreshOnInit();
   }
 
   public stop(): void {
     this.unsubscribe$.next();
   }
 
-  private onLoginSuccess() {
-    return this.authEventsService.loginSuccess$.pipe(
-      takeUntil(this.unsubscribe$),
-      tap((payload) => {
-        this.storage.saveTokens(payload.accessToken, payload.refreshToken);
-        this.refreshTimer.start();
-      }),
-      switchMap(() =>
-        this.userService.getMe().pipe(
-          catchError((err) => {
-            console.debug(err);
-            return of(null);
-          })
-        )
-      ),
-      filter((res) => res != null),
-      tap((user) => this.userStore.setUser(user)),
-      tap(() => this.praetorActionsService.emitLoggedAction())
-    );
+  private subscribeToLogin() {
+    this.authEventsService.loginSuccess$
+      .pipe(takeUntil(this.unsubscribe$))
+      .pipe(this.handleTokensAndLoadUser())
+      .subscribe();
   }
 
-  private onLogout() {
-    return this.authEventsService.logout$.pipe(
-      takeUntil(this.unsubscribe$),
-      tap(() => {
-        this.storage.clearTokens();
-        this.refreshTimer.stop();
-        this.userStore.clear();
-      })
-    );
+  private subscribeToLogout() {
+    this.authEventsService.logout$
+      .pipe(takeUntil(this.unsubscribe$))
+      .subscribe(() => this.resetAll());
+  }
+
+  private subscribeToTokenRefresh() {
+    this.authEventsService.refreshToken$
+      .pipe(takeUntil(this.unsubscribe$))
+      .pipe(this.handleTokensAndLoadUser())
+      .subscribe();
+  }
+
+  private tryAutoRefreshOnInit() {
+    const refreshToken = this.storage.getRefreshToken();
+
+    if (refreshToken) {
+      this.authenticationService
+        .refresh({ refreshToken })
+        .pipe(take(1))
+        .subscribe({
+          next: (payload) => this.authEventsService.emitRefreshToken(payload),
+          error: () => this.resetAll(),
+        });
+    } else {
+      this.resetAll();
+    }
+  }
+
+  private handleTokensAndLoadUser() {
+    return (source$: any) =>
+      source$.pipe(
+        tap(({ payload: { accessToken, refreshToken } }) => {
+          this.storage.saveTokens(accessToken, refreshToken);
+          this.refreshTimer.restart();
+        }),
+        switchMap(() =>
+          this.userService.getMe().pipe(
+            catchError((err) => {
+              console.debug('Errore durante getMe:', err);
+              return of(null);
+            })
+          )
+        ),
+        filter((user): user is UserDto => !!user),
+        tap((user: UserDto) => this.userStore.setUser(user))
+      );
+  }
+
+  private resetAll() {
+    this.storage.clearTokens();
+    this.refreshTimer.stop();
+    this.userStore.clear();
   }
 }

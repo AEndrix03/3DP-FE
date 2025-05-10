@@ -10,11 +10,11 @@ import {
 } from './bearer-config.token';
 
 export interface PraetorInjectionConfig {
-  acccessToken?: string;
+  accessToken?: string;
   refreshToken?: string;
-  storageType: StorageStrategy;
-  includedUrls: string[];
-  excludedUrls: string[];
+  storageType?: StorageStrategy;
+  includedUrls?: string[];
+  excludedUrls?: string[];
 }
 
 export function providePraetor(
@@ -24,10 +24,10 @@ export function providePraetor(
   const providers: Provider[] = [{ provide: PRAETOR_API_URL, useValue: url }];
 
   if (config) {
-    if (config.acccessToken) {
+    if (config.accessToken) {
       providers.push({
         provide: PRAETOR_BEARER_ACCESS_TOKEN_NAME,
-        useValue: config.acccessToken,
+        useValue: config.accessToken,
       });
     }
     if (config.refreshToken) {

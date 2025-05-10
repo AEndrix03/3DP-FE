@@ -1,42 +1,49 @@
 import { Injectable } from '@angular/core';
-import { Subject, tap } from 'rxjs';
+import { Subject } from 'rxjs';
 import { LoginResponseDto } from '../models/login.models';
+import { RefreshResponseDto } from '../models/tokens.models';
+import { filter } from 'rxjs/operators';
 
 export type AuthEvent =
   | { type: 'loginSuccess'; payload: LoginResponseDto }
+  | { type: 'refresh'; payload: RefreshResponseDto }
   | { type: 'logout' };
 
 @Injectable({ providedIn: 'root' })
 export class AuthEventsService {
-  private readonly authEvents$ = new Subject<AuthEvent>();
-  public readonly loginSuccess$ = new Subject<LoginResponseDto>();
-  public readonly logout$ = new Subject<void>();
+  private readonly _events$ = new Subject<AuthEvent>();
 
-  private readonly events$ = this.authEvents$.asObservable();
-
-  constructor() {
-    this.authEvents$
-      .pipe(
-        tap((event) => {
-          if (event.type === 'loginSuccess') {
-            this.loginSuccess$.next(event.payload);
-          } else if (event.type === 'logout') {
-            this.logout$.next();
-          }
-        })
+  public readonly loginSuccess$ = this._events$
+    .asObservable()
+    .pipe(
+      filter(
+        (e): e is { type: 'loginSuccess'; payload: LoginResponseDto } =>
+          e.type === 'loginSuccess'
       )
-      .subscribe();
+    );
+
+  public readonly refreshToken$ = this._events$
+    .asObservable()
+    .pipe(
+      filter(
+        (e): e is { type: 'refresh'; payload: RefreshResponseDto } =>
+          e.type === 'refresh'
+      )
+    );
+
+  public readonly logout$ = this._events$
+    .asObservable()
+    .pipe(filter((e): e is { type: 'logout' } => e.type === 'logout'));
+
+  emitLoginSuccess(payload: LoginResponseDto) {
+    this._events$.next({ type: 'loginSuccess', payload });
   }
 
-  public loginSuccess(payload: LoginResponseDto) {
-    this.authEvents$.next({ type: 'loginSuccess', payload });
+  emitRefreshToken(payload: RefreshResponseDto) {
+    this._events$.next({ type: 'refresh', payload });
   }
 
-  public logout() {
-    this.authEvents$.next({ type: 'logout' });
-  }
-
-  private emit(event: AuthEvent) {
-    this.authEvents$.next(event);
+  emitLogout() {
+    this._events$.next({ type: 'logout' });
   }
 }

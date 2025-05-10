@@ -1,32 +1,16 @@
 import { inject, Injectable } from '@angular/core';
-import {
-  PraetorActionsService,
-  TokenManagerService,
-} from '@3-dp-fe/praetor-auth-kit';
-import { tap } from 'rxjs';
-import { Router } from '@angular/router';
+import { TokenManagerService } from '@3-dp-fe/praetor-auth-kit';
 
 @Injectable({ providedIn: 'root' })
 export class AppInitService {
-  constructor(
-    private readonly praetorTokenManager: TokenManagerService,
-    private readonly praetorActionsService: PraetorActionsService,
-    private readonly router: Router
-  ) {}
+  constructor(private readonly praetorTokenManager: TokenManagerService) {}
 
   public init() {
-    this.startTokenManage();
-    this.initAuthActions();
+    this.startTokenManager();
   }
 
-  private startTokenManage() {
+  private startTokenManager() {
     this.praetorTokenManager.start();
-  }
-
-  private initAuthActions() {
-    this.praetorActionsService.logged$
-      .pipe(tap(() => this.router.navigate(['dashboard'])))
-      .subscribe();
   }
 }
 

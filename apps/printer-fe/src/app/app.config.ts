@@ -12,7 +12,11 @@ import {
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import Preset from './core/styles/themes/preset';
-import { authInterceptor, providePraetor } from '@3-dp-fe/praetor-auth-kit';
+import {
+  authInterceptor,
+  PRAETOR_LOGIN_EFFECTS,
+  providePraetor,
+} from '@3-dp-fe/praetor-auth-kit';
 import { environment } from './environments/environment';
 import {
   provideHttpClient,
@@ -20,6 +24,7 @@ import {
   withInterceptors,
 } from '@angular/common/http';
 import { initializeAppFn } from './core/services/app-init.service';
+import { LoginEffectService } from './core/services/auth/login-effect.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -30,6 +35,12 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     providePraetor(environment.praetorApiUrl),
+    {
+      provide: PRAETOR_LOGIN_EFFECTS,
+      useFactory: (s: LoginEffectService) => s.effect,
+      deps: [LoginEffectService],
+      multi: true,
+    },
     providePrimeNG({
       theme: {
         preset: Preset,

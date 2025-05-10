@@ -1,11 +1,11 @@
-import { Component, signal, WritableSignal } from '@angular/core';
+import { Component, Inject, signal, WritableSignal } from '@angular/core';
 import { MessageService } from 'primeng/api';
 import {
   AuthenticationService,
   AuthEventsService,
   LoginFormComponent,
   LoginRequestDto,
-  PraetorActionsService,
+  PRAETOR_LOGIN_EFFECTS,
 } from '@3-dp-fe/praetor-auth-kit';
 import { Toast } from 'primeng/toast';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -22,10 +22,10 @@ export class LoginComponent {
   public readonly loading: WritableSignal<boolean> = signal(false);
 
   constructor(
+    @Inject(PRAETOR_LOGIN_EFFECTS) private readonly loginEffect: (() => void)[],
     private readonly messageService: MessageService,
     private readonly authenticationService: AuthenticationService,
-    private readonly authEventService: AuthEventsService,
-    private readonly praetorActionsService: PraetorActionsService
+    private readonly authEventService: AuthEventsService
   ) {}
 
   doLogin(request: LoginRequestDto) {
@@ -39,15 +39,15 @@ export class LoginComponent {
         }),
         filter((payload) => payload != null),
         tap(() => this.showSuccess()),
-        tap((payload) => this.authEventService.loginSuccess(payload)),
-        tap(() => this.praetorActionsService.emitLoginAction()),
+        tap((payload) => this.authEventService.emitLoginSuccess(payload)),
+        tap(() => this.loginEffect?.forEach((fn) => fn())),
         finalize(() => this.loading.set(false))
       )
       .subscribe();
   }
 
   doChangePassword() {
-    this.praetorActionsService.emitChangePasswordAction();
+    /*this.praetorActionsService.emitChangePasswordAction();*/
   }
 
   private showSuccess(): void {

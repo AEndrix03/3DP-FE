@@ -36,6 +36,9 @@ export const PRAETOR_BEARER_EXCLUDE_URLS = new InjectionToken<string[]>(
   'PRAETOR_BEARER_EXCLUDE_URLS',
   {
     providedIn: 'root',
-    factory: () => ['/login'],
+    factory: () => [
+      '/praetor/authentication/login',
+      '/praetor/authentication/refresh',
+    ],
   }
 );

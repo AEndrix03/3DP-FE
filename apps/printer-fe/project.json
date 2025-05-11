@@ -30,12 +30,7 @@
           "apps/printer-fe/src/styles.css",
           "node_modules/primeicons/primeicons.css"
         ],
-        "scripts": [],
-        "server": "apps/printer-fe/src/main.server.ts",
-        "ssr": {
-          "entry": "apps/printer-fe/src/server.ts"
-        },
-        "outputMode": "server"
+        "scripts": []
       },
       "configurations": {
         "production": {

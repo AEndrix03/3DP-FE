@@ -1,1 +1,11 @@
-<printer-private-sidebar></printer-private-sidebar>
+<printer-private-navbar [userRole]="userRole()"
+                        (toggleSidebar)="visibleSidebar.set(!visibleSidebar())"
+                        (logout)="logout()"
+                        (profile)="goToProfile()" />
+
+<div class="flex h-[calc(100vh-4rem)]">
+  <printer-private-sidebar [visible]="visibleSidebar()" />
+  <main class="flex-1 p-4 overflow-y-auto">
+    <router-outlet></router-outlet>
+  </main>
+</div>

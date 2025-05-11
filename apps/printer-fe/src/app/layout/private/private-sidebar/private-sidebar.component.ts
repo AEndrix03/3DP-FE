@@ -1,55 +1,40 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  Component,
+  effect,
+  input,
+  InputSignal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
+import { CommonModule, NgClass, NgIf } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
-import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
-import { Observable } from 'rxjs';
-import { map, shareReplay } from 'rxjs/operators';
+import { SidebarModule } from 'primeng/sidebar';
+import { ThemeModeService } from '../../../core/components/theme-mode-button/theme-mode.service';
 
 @Component({
   selector: 'printer-private-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterModule, ButtonModule, TooltipModule],
+  imports: [
+    CommonModule,
+    RouterModule,
+    ButtonModule,
+    TooltipModule,
+    SidebarModule,
+    NgClass,
+    NgIf,
+  ],
   templateUrl: './private-sidebar.component.html',
 })
-export class PrivateSidebarComponent implements OnInit {
-  private breakpointObserver = inject(BreakpointObserver);
+export class PrivateSidebarComponent {
+  public readonly visible: InputSignal<boolean> = input.required();
 
-  // Track if sidebar is visible on smaller screens
-  isSidebarVisible = true;
+  protected readonly isDarkMode: WritableSignal<boolean> = signal(false);
 
-  // Track screen size for responsive behavior
-  isHandset$: Observable<boolean> = this.breakpointObserver
-    .observe(Breakpoints.Handset)
-    .pipe(
-      map((result) => result.matches),
-      shareReplay()
-    );
+  constructor(private readonly themeService: ThemeModeService) {
+    this.isDarkMode.set(this.themeService.darkMode());
 
-  ngOnInit(): void {
-    // Subscribe to screen size changes for responsive behavior
-    this.isHandset$.subscribe((isHandset) => {
-      // On small screens, hide sidebar by default
-      this.isSidebarVisible = !isHandset;
-    });
-  }
-
-  /**
-   * Toggle sidebar visibility on mobile
-   */
-  toggleSidebar(): void {
-    this.isSidebarVisible = !this.isSidebarVisible;
-  }
-
-  /**
-   * Navigation shortcut handler (keyboard navigation)
-   * @param event Keyboard event
-   */
-  handleKeyboardShortcut(event: KeyboardEvent): void {
-    // Implement keyboard shortcuts (g + d -> Dashboard, etc.)
-    if (event.key === 'd' && event.altKey) {
-      // Navigate to dashboard
-    }
+    effect(() => this.isDarkMode.set(this.themeService.darkMode()));
   }
 }

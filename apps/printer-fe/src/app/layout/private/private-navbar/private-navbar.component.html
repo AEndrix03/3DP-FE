@@ -1,1 +1,35 @@
-<p>private-navbar works!</p>
+<nav class="w-full h-16 bg-slate-900 text-white px-4 flex items-center justify-between shadow-md z-50 overflow-y-auto">
+  <div class="flex items-center gap-4">
+    <p-button
+      icon="pi pi-bars text-xl"
+      class="p-2 rounded hover:bg-slate-800"
+      (click)="toggleSidebar.emit()"
+      [rounded]="true"
+      [text]="true"
+      severity="secondary"
+    >
+      <i class=""></i>
+    </p-button>
+    <span class="text-xl font-semibold">3D Printer</span>
+  </div>
+
+  <div class="flex items-center gap-4">
+    <printer-theme-mode-button severity="secondary" [rounded]="true" [text]="true" />
+
+    <span class="text-sm text-slate-300">{{ userRole }}</span>
+
+    <p-avatar
+      icon="pi pi-user"
+      shape="circle"
+      styleClass="cursor-pointer"
+      (click)="toggleUserMenu($event)"
+    />
+
+    <p-menu
+      #userMenu
+      [popup]="true"
+      [model]="userMenuItems"
+      appendTo="body"
+    />
+  </div>
+</nav>

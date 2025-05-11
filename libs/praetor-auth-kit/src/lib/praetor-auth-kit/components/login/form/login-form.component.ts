@@ -49,7 +49,7 @@ export class LoginFormComponent {
       password: [
         '',
         {
-          updateOn: 'blur',
+          updateOn: 'change',
           validators: [Validators.required],
         },
       ],

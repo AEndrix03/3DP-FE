@@ -1,5 +1,7 @@
 export * from './lib/praetor-auth-kit/components/login/form/login-form.component';
 export * from './lib/praetor-auth-kit/components/login/login.component';
+export * from './lib/praetor-auth-kit/components/logout/logout-confirm/logout-confirm.component';
+export * from './lib/praetor-auth-kit/components/logout/logout.component';
 
 export * from './lib/praetor-auth-kit/tokens/api.token';
 export * from './lib/praetor-auth-kit/tokens/bearer-config.token';
@@ -24,5 +26,7 @@ export * from './lib/praetor-auth-kit/services/token/token-storage.service';
 export * from './lib/praetor-auth-kit/services/event/auth-event.service';
 
 export * from './lib/praetor-auth-kit/stores/user/user.store';
+
+export * from './lib/praetor-auth-kit/guards/auth.guard';
 
 export * from './lib/praetor-auth-kit/auth.routes';

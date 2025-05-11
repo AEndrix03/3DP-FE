@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { authGuard } from './core/guards/auth.guard';
+import { authGuard } from '@3-dp-fe/praetor-auth-kit';
 
 export const appRoutes: Route[] = [
   {

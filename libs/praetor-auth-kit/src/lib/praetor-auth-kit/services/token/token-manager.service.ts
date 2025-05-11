@@ -84,12 +84,14 @@ export class TokenManagerService {
           this.refreshTimer.restart();
         }),
         switchMap(() =>
-          this.userService.getMe().pipe(
-            catchError((err) => {
-              console.debug('Errore durante getMe:', err);
-              return of(null);
-            })
-          )
+          this.userService
+            .getMe(this.applicationName, this.authApplicationName)
+            .pipe(
+              catchError((err) => {
+                console.debug('Errore durante getMe:', err);
+                return of(null);
+              })
+            )
         ),
         filter((user): user is UserDto => !!user),
         tap((user: UserDto) => this.userStore.setUser(user))

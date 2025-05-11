@@ -11,13 +11,11 @@ import { UserDto } from '../../models/user.models';
 
 type UserState = {
   user: UserDto | null;
-  roles: Record<string, string> | null;
   activeRoleId: string | null;
 };
 
 const initialState: UserState = {
   user: null,
-  roles: null,
   activeRoleId: null,
 };
 
@@ -57,18 +55,21 @@ export const userStore = signalStore(
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('3dprinter_user', JSON.stringify(user));
       }
-      patchState(store, (state) => ({ ...state, user }));
-    },
 
-    setRoles: (roles: Record<string, string>) => {
-      const activeRoleId = Object.values(roles)[0] ?? null;
-      if (typeof window !== 'undefined') {
+      if (
+        typeof window !== 'undefined' &&
+        sessionStorage.getItem('3dprinter_active_role') == null &&
+        store.activeRoleId() == null
+      ) {
+        const activeRoleId = Object.keys(user.roles)[0] ?? null;
         sessionStorage.setItem(
           '3dprinter_active_role',
           JSON.stringify(activeRoleId)
         );
+        patchState(store, (state) => ({ ...state, user, activeRoleId }));
+      } else {
+        patchState(store, (state) => ({ ...state, user }));
       }
-      patchState(store, (state) => ({ ...state, roles, activeRoleId }));
     },
 
     setActiveRoleId: (activeRoleId: string) => {

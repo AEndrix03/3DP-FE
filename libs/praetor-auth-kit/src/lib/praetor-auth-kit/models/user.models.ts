@@ -1,5 +1,8 @@
 export interface UserDto {
   userId: string;
   email: string;
-  roles: string[];
+  firstName: string;
+  lastName: string;
+  createdAt: Date;
+  roles: Record<string, string>;
 }

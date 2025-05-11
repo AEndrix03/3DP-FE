@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { PRAETOR_API_URL } from '../tokens/api.token';
 import { UserDto } from '../models/user.models';
@@ -10,7 +10,13 @@ export class UserService {
 
   constructor(private readonly http: HttpClient) {}
 
-  getMe(): Observable<UserDto> {
-    return this.http.get<UserDto>(`${this.praetorUrl}/user/me`);
+  getMe(
+    applicationName: string,
+    authenticatorName: string
+  ): Observable<UserDto> {
+    const params = new HttpParams()
+      .set('applicationName', applicationName)
+      .set('authenticatorName', authenticatorName);
+    return this.http.get<UserDto>(`${this.praetorUrl}/user/me`, { params });
   }
 }

@@ -14,10 +14,17 @@
     Dashboard
   </a>
   <a
+    routerLink="/dashboard"
+    class="block px-2 py-2 hover:bg-slate-700 rounded"
+    [ngClass]="{ 'hover:bg-slate-700': isDarkMode(), 'hover:bg-slate-200': !isDarkMode() }"
+  >
+    Dashboard
+  </a>
+  <a
     routerLink="/settings"
     class="block px-2 py-2 hover:bg-slate-700 rounded"
     [ngClass]="{ 'hover:bg-slate-700': isDarkMode(), 'hover:bg-slate-200': !isDarkMode() }"
   >
-    Impostazioni
+    Settings
   </a>
 </aside>

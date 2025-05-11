@@ -1,11 +1,11 @@
 <div
   class="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-md w-full max-w-md border border-gray-200 dark:border-gray-700">
   <h1 class="text-3xl font-bold text-center mb-6 text-gray-900 dark:text-white">
-    Conferma Logout
+    Logout
   </h1>
 
   <p class="text-center text-gray-700 dark:text-gray-300 mb-6">
-    Sei sicuro di voler uscire dall'applicazione?
+    Are you sure you want to log out of the application?
   </p>
 
   <div class="flex justify-between gap-4">
@@ -14,7 +14,7 @@
       type="button"
       class="p-button-outlined flex-1"
       icon="pi pi-times"
-      label="Annulla"
+      label="Back"
       (click)="cancelLogout.emit()"
     ></button>
     <button
@@ -22,7 +22,7 @@
       type="button"
       class="p-button-danger flex-1"
       icon="pi pi-check"
-      label="Conferma"
+      label="Logout"
       (click)="confirmLogout.emit()"
     ></button>
   </div>

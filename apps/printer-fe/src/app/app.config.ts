@@ -34,7 +34,11 @@ export const appConfig: ApplicationConfig = {
     provideRouter(appRoutes),
     provideAnimationsAsync(),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
-    providePraetor(environment.praetorApiUrl),
+    providePraetor(
+      environment.praetorApiUrl,
+      environment.applicationName,
+      environment.praetorAuthApplicationName
+    ),
     {
       provide: PRAETOR_LOGIN_EFFECTS,
       useFactory: (s: LoginEffectService) => s.effect,

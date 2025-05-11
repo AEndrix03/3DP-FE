@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
-import { LoginResponseDto } from '../models/login.models';
-import { RefreshResponseDto } from '../models/tokens.models';
+import { LoginResponseDto } from '../../models/login.models';
+import { RefreshResponseDto } from '../../models/tokens.models';
 import { filter } from 'rxjs/operators';
 
 export type AuthEvent =

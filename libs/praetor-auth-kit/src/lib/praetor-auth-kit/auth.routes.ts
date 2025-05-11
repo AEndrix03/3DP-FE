@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from '@3-dp-fe/praetor-auth-kit';
+import { LoginComponent } from './components/login/login.component';
 
 export const authRoutes: Routes = [
   {

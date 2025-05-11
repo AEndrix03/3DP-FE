@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { PRAETOR_API_URL } from '../tokens/api-url.token';
+import { PRAETOR_API_URL } from '../tokens/api.token';
 import { LoginRequestDto, LoginResponseDto } from '../models/login.models';
 import {
   RegisterRequestDto,

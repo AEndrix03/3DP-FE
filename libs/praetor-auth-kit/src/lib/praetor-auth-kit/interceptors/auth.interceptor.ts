@@ -5,7 +5,7 @@ import {
   HttpInterceptorFn,
   HttpRequest,
 } from '@angular/common/http';
-import { TokenStorageService } from '../services/token-storage.service';
+import { TokenStorageService } from '../services/token/token-storage.service';
 import {
   PRAETOR_BEARER_EXCLUDE_URLS,
   PRAETOR_BEARER_INCLUDE_URLS,

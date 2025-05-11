@@ -1,18 +1,25 @@
 import { inject, Injectable } from '@angular/core';
 import { of, Subject, takeUntil, tap } from 'rxjs';
 import { catchError, filter, switchMap, take } from 'rxjs/operators';
-import { AuthEventsService } from './auth-event.service';
+import { AuthEventsService } from '../event/auth-event.service';
 import { TokenStorageService } from './token-storage.service';
 import { TokenRefreshService } from './token-refresh.service';
-import { AuthenticationService } from './authentication.service';
-import { UserService } from './user.service';
-import { UserDto } from '../models/user.models';
-import { userStore } from '../stores/user/user.store';
+import { AuthenticationService } from '../authentication.service';
+import { UserService } from '../user.service';
+import { UserDto } from '../../models/user.models';
+import { userStore } from '../../stores/user/user.store';
+import {
+  PRAETOR_APPLICATION_NAME,
+  PRAETOR_AUTH_APPLICATION_NAME,
+} from '../../tokens/api.token';
 
 @Injectable({ providedIn: 'root' })
 export class TokenManagerService {
   private readonly unsubscribe$ = new Subject<void>();
+
   private readonly userStore = inject(userStore);
+  private readonly applicationName = inject(PRAETOR_APPLICATION_NAME);
+  private readonly authApplicationName = inject(PRAETOR_AUTH_APPLICATION_NAME);
 
   constructor(
     private readonly storage: TokenStorageService,

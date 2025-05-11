@@ -3,7 +3,7 @@ import { interval, Subscription } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { AuthenticationService } from '@3-dp-fe/praetor-auth-kit';
 import { TokenStorageService } from './token-storage.service';
-import { AuthEventsService } from './auth-event.service';
+import { AuthEventsService } from '../event/auth-event.service';
 
 @Injectable({ providedIn: 'root' })
 export class TokenRefreshService {

@@ -1,5 +1,9 @@
 import { Provider } from '@angular/core';
-import { PRAETOR_API_URL } from './api-url.token';
+import {
+  PRAETOR_API_URL,
+  PRAETOR_APPLICATION_NAME,
+  PRAETOR_AUTH_APPLICATION_NAME,
+} from './api.token';
 import {
   PRAETOR_BEARER_ACCESS_TOKEN_NAME,
   PRAETOR_BEARER_EXCLUDE_URLS,
@@ -19,9 +23,15 @@ export interface PraetorInjectionConfig {
 
 export function providePraetor(
   url: string,
+  applicationName: string,
+  authApplicationName: string,
   config?: PraetorInjectionConfig
 ): Provider[] {
-  const providers: Provider[] = [{ provide: PRAETOR_API_URL, useValue: url }];
+  const providers: Provider[] = [
+    { provide: PRAETOR_API_URL, useValue: url },
+    { provide: PRAETOR_APPLICATION_NAME, useValue: applicationName },
+    { provide: PRAETOR_AUTH_APPLICATION_NAME, useValue: authApplicationName },
+  ];
 
   if (config) {
     if (config.accessToken) {

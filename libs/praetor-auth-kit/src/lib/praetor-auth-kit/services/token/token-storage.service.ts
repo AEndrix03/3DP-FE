@@ -5,7 +5,7 @@ import {
   PRAETOR_BEARER_REFRESH_TOKEN_NAME,
   PRAETOR_BEARER_STORAGE_STRATEGY,
   StorageStrategy,
-} from '../tokens/bearer-config.token';
+} from '../../tokens/bearer-config.token';
 
 @Injectable({ providedIn: 'root' })
 export class TokenStorageService {

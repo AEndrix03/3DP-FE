@@ -1,0 +1,13 @@
+<div class="w-full">
+  <p-carousel [value]="value"
+              [circular]="true"
+              [autoplayInterval]="autoplayInterval"
+              [numVisible]="numVisible"
+              styleClass="w-full">
+    <ng-template pTemplate="item" let-item>
+      <div class="w-full">
+        <ng-container *ngTemplateOutlet="template; context: { $implicit: item }"></ng-container>
+      </div>
+    </ng-template>
+  </p-carousel>
+</div>

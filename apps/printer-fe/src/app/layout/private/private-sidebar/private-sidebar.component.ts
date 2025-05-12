@@ -11,7 +11,7 @@ import { RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { SidebarModule } from 'primeng/sidebar';
-import { ThemeModeService } from '../../../core/components/theme-mode-button/theme-mode.service';
+import { ThemeModeService } from '../../../core/components/shared/theme-mode-button/theme-mode.service';
 
 @Component({
   selector: 'printer-private-sidebar',

@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { Menu } from 'primeng/menu';
 import { Avatar } from 'primeng/avatar';
-import { ThemeModeButtonComponent } from '../../../core/components/theme-mode-button/theme-mode-button.component';
+import { ThemeModeButtonComponent } from '../../../core/components/shared/theme-mode-button/theme-mode-button.component';
 import { NgOptimizedImage } from '@angular/common';
 
 @Component({

@@ -1,0 +1,15 @@
+<div class="flex flex-col gap-4">
+  <printer-page-title title="Printers"></printer-page-title>
+
+  <printer-carousel [value]="slides">
+    <ng-template let-item>
+      <div
+        class="w-full h-48 flex items-center justify-center
+             bg-gray-100 dark:bg-gray-800
+             border border-gray-300 dark:border-gray-700
+             rounded-lg text-xl font-medium">
+        {{ item }}
+      </div>
+    </ng-template>
+  </printer-carousel>
+</div>

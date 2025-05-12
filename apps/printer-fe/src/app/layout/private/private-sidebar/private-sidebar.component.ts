@@ -31,10 +31,14 @@ export class PrivateSidebarComponent {
   public readonly visible: InputSignal<boolean> = input.required();
 
   protected readonly isDarkMode: WritableSignal<boolean> = signal(false);
+  protected readonly collapsed: WritableSignal<boolean> = signal(true);
 
   constructor(private readonly themeService: ThemeModeService) {
     this.isDarkMode.set(this.themeService.darkMode());
-
     effect(() => this.isDarkMode.set(this.themeService.darkMode()));
+  }
+
+  toggleCollapse(): void {
+    this.collapsed.set(!this.collapsed());
   }
 }

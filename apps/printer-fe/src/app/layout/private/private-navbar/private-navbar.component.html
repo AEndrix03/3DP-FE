@@ -1,17 +1,13 @@
 <nav class="w-full h-16 bg-slate-900 text-white px-4 flex items-center justify-between shadow-md z-50 overflow-y-auto">
   <div class="flex items-center gap-4">
-    <p-button
-      icon="pi pi-bars text-xl"
-      class="p-2 rounded hover:bg-slate-800"
-      (click)="toggleSidebar.emit()"
-      [rounded]="true"
-      [text]="true"
-      severity="secondary"
+    <button
+      class="p-2 rounded hover:bg-slate-800 flex items-center"
     >
-      <i class=""></i>
-    </p-button>
+      <img ngSrc="/logo.svg" alt="Logo" class="h-6 w-auto" height="16" width="16" />
+    </button>
     <span class="text-xl font-semibold">3D Printer</span>
   </div>
+
 
   <div class="flex items-center gap-4">
     <printer-theme-mode-button severity="secondary" [rounded]="true" [text]="true" />

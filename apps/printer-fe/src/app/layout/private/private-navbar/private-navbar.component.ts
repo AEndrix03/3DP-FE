@@ -8,13 +8,13 @@ import {
 import { Menu } from 'primeng/menu';
 import { Avatar } from 'primeng/avatar';
 import { ThemeModeButtonComponent } from '../../../core/components/theme-mode-button/theme-mode-button.component';
-import { Button } from 'primeng/button';
+import { NgOptimizedImage } from '@angular/common';
 
 @Component({
   selector: 'printer-private-navbar',
   templateUrl: './private-navbar.component.html',
   standalone: true,
-  imports: [Menu, Avatar, ThemeModeButtonComponent, Button],
+  imports: [Menu, Avatar, ThemeModeButtonComponent, NgOptimizedImage],
 })
 export class PrivateNavbarComponent {
   @Input() userRole: string = '';

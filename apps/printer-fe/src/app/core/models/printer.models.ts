@@ -3,7 +3,6 @@ export interface PrinterDto {
   name: string;
   driverId: string;
   lastSeen: Date;
-  statusCode: string;
   imageUrl?: string;
 }
 
@@ -18,17 +17,9 @@ export interface PrinterSaveDto extends PrinterCreateDto {
 export interface PrinterFilterDto {
   name?: string;
   driverId?: string;
-  statusCode?: string;
 }
 
 export interface PrinterStatusDto {
   code: string;
   description: string;
-}
-
-export enum PrinterStatusEnum {
-  IDLE = 'IDL',
-  RUNNING = 'RUN',
-  ERROR = 'ERR',
-  STOPPED = 'STP',
 }

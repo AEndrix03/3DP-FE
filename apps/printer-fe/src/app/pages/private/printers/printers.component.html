@@ -2,14 +2,14 @@
   <printer-page-title title="Printers">
     <p-button
       printerPageActions
-      label="Aggiungi"
+      label="Add New Printer"
       icon="pi pi-plus"
       styleClass="p-button-success"
       (click)="createPrinter()"
     />
   </printer-page-title>
 
-  <printer-printers-filter [statusList]="statusList"></printer-printers-filter>
+  <printer-printers-filter />
 
-  <printer-printers-list [items]="items" [statusList]="statusList"></printer-printers-list>
+  <printer-printers-list [items]="items" />
 </div>

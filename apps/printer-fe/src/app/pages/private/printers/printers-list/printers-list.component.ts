@@ -1,26 +1,21 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import {
-  PrinterDto,
-  PrinterStatusDto,
-} from '../../../../core/models/printer.models';
-import { Tag } from 'primeng/tag';
+import { PrinterDto } from '../../../../core/models/printer.models';
 import { Button } from 'primeng/button';
-import { NgForOf, NgIf } from '@angular/common';
+import { NgForOf } from '@angular/common';
 import { Tooltip } from 'primeng/tooltip';
 
 @Component({
   selector: 'printer-printers-list',
-  imports: [Tag, NgIf, Button, NgForOf, Tooltip],
+  imports: [Button, NgForOf, Tooltip],
   templateUrl: './printers-list.component.html',
 })
 export class PrintersListComponent {
   @Input() items: PrinterDto[] = [];
-  @Input() statusList: PrinterStatusDto[] = [];
 
   @Output() viewDetail = new EventEmitter<string>();
   @Output() delete = new EventEmitter<string>();
 
-  public responsiveOptions = [
+  protected responsiveOptions = [
     {
       breakpoint: '1400px',
       numVisible: 2,
@@ -42,28 +37,4 @@ export class PrintersListComponent {
       numScroll: 1,
     },
   ];
-
-  public getDetailedStatus(statusCode: string): {
-    status: PrinterStatusDto;
-    severity: string;
-  } {
-    const status =
-      this.statusList.filter((status) => status.code === statusCode)[0] ?? null;
-    let severity = null;
-
-    if (status.code === 'RUN') {
-      severity = 'success';
-    } else if (status.code === 'STP') {
-      severity = 'warning';
-    } else if (status.code === 'ERR') {
-      severity = 'danger';
-    } else {
-      severity = 'info';
-    }
-
-    return {
-      status,
-      severity,
-    };
-  }
 }

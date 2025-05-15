@@ -25,76 +25,50 @@ export class PrintersComponent {
       name: 'Printer 1',
       driverId: '3283290011',
       lastSeen: new Date(),
-      statusCode: 'ERR',
     },
     {
       id: '2',
       name: 'Printer 2',
       driverId: '3283290012',
       lastSeen: new Date(),
-      statusCode: 'STP',
     },
     {
       id: '3',
       name: 'Printer 3',
       driverId: '3283290013',
       lastSeen: new Date(),
-      statusCode: 'RUN',
     },
     {
       id: '4',
       name: 'Printer 4',
       driverId: '3283290014',
       lastSeen: new Date(),
-      statusCode: 'IDL',
     },
     {
       id: '1',
       name: 'Printer 1',
       driverId: '3283290011',
       lastSeen: new Date(),
-      statusCode: 'ERR',
     },
     {
       id: '2',
       name: 'Printer 2',
       driverId: '3283290012',
       lastSeen: new Date(),
-      statusCode: 'STP',
     },
     {
       id: '3',
       name: 'Printer 3',
       driverId: '3283290013',
       lastSeen: new Date(),
-      statusCode: 'RUN',
     },
     {
       id: '4',
       name: 'Printer 4',
       driverId: '3283290014',
       lastSeen: new Date(),
-      statusCode: 'IDL',
     },
   ];
-  protected readonly createPrinter = createPrinter;
 
-  protected readonly statusList = [
-    {
-      code: 'RUN',
-      description: 'RUNNING',
-    },
-    {
-      code: 'IDL',
-      description: 'IDLE',
-    },
-    {
-      code: 'STP',
-      description: 'STOPPED',
-    },
-    {
-      code: 'ERR',
-      description: 'ERROR',
-    },
-  ];
+  protected readonly createPrinter = createPrinter;
 }

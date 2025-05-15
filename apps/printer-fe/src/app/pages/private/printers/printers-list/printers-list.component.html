@@ -10,13 +10,6 @@
           alt="Printer image"
           class="w-full h-[180px] object-cover rounded-lg"
         />
-        <div *ngIf="getDetailedStatus(item.statusCode) as mappedStatus">
-          <p-tag
-            [value]="mappedStatus.status.description"
-            [severity]="mappedStatus.severity"
-            class="absolute top-2 left-2 rounded-full text-xs px-3 py-1 shadow-sm"
-          />
-        </div>
       </div>
 
       <div class="mt-4">

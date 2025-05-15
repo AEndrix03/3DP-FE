@@ -20,47 +20,20 @@
 
     <p-button
       styleClass="p-button-text p-button-plain w-full text-left px-2 py-2"
+      icon="pi pi-box"
+      pTooltip="Jobs"
+      [style]="{'justify-content': 'start'}"
+      [label]="!collapsed() ? 'Jobs' : ''"
+      [routerLink]="'/jobs'"
+    ></p-button>
+
+    <p-button
+      styleClass="p-button-text p-button-plain w-full text-left px-2 py-2"
       icon="pi pi-print"
       pTooltip="Printers"
       [style]="{'justify-content': 'start'}"
       [label]="!collapsed() ? 'Printers' : ''"
       [routerLink]="'/printers'"
-    ></p-button>
-
-    <p-button
-      styleClass="p-button-text p-button-plain w-full text-left px-2 py-2"
-      icon="pi pi-list"
-      pTooltip="Queue"
-      [style]="{'justify-content': 'start'}"
-      [label]="!collapsed() ? 'Queue' : ''"
-      [routerLink]="'/queue'"
-    ></p-button>
-
-    <p-button
-      styleClass="p-button-text p-button-plain w-full text-left px-2 py-2"
-      icon="pi pi-box"
-      pTooltip="Models"
-      [style]="{'justify-content': 'start'}"
-      [label]="!collapsed() ? 'Models' : ''"
-      [routerLink]="'/models'"
-    ></p-button>
-
-    <p-button
-      styleClass="p-button-text p-button-plain w-full text-left px-2 py-2"
-      icon="pi pi-folder"
-      pTooltip="Archive"
-      [style]="{'justify-content': 'start'}"
-      [label]="!collapsed() ? 'Archive' : ''"
-      [routerLink]="'/archive'"
-    ></p-button>
-
-    <p-button
-      styleClass="p-button-text p-button-plain w-full text-left px-2 py-2"
-      icon="pi pi-chart-bar"
-      pTooltip="Stats"
-      [style]="{'justify-content': 'start'}"
-      [label]="!collapsed() ? 'Stats' : ''"
-      [routerLink]="'/stats'"
     ></p-button>
 
     <p-button

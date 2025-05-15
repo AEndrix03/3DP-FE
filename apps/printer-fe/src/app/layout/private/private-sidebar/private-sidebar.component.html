@@ -8,52 +8,37 @@
   }"
   *ngIf="visible()"
 >
-  <div class="space-y-2">
-    <p-button
-      styleClass="p-button-text p-button-plain w-full text-left px-2 py-2"
-      icon="pi pi-home"
-      pTooltip="Dashboard"
-      [style]="{'justify-content': 'start'}"
-      [label]="!collapsed() ? 'Dashboard' : ''"
-      [routerLink]="'/dashboard'"
-    ></p-button>
+  <div class="flex flex-col gap-2 items-center">
+    <ng-container *ngFor="let item of navItems">
+      <p-button
+        [icon]="item.icon"
+        [routerLink]="item.route"
+        variant="text"
+        severity="secondary"
+        [label]="!collapsed() ? item.label : ''"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        [ngClass]="[
+          'p-button-text p-button-plain flex items-center transition-all',
+          collapsed() ? 'justify-center w-11 h-11 text-xl' : 'justify-start w-full px-3 py-2 text-base',
+          'rounded-md',
+          'hover:bg-primary-500 hover:text-white',
+          'active:bg-primary-600 active:text-white',
+        ]"
+      />
 
-    <p-button
-      styleClass="p-button-text p-button-plain w-full text-left px-2 py-2"
-      icon="pi pi-box"
-      pTooltip="Jobs"
-      [style]="{'justify-content': 'start'}"
-      [label]="!collapsed() ? 'Jobs' : ''"
-      [routerLink]="'/jobs'"
-    ></p-button>
-
-    <p-button
-      styleClass="p-button-text p-button-plain w-full text-left px-2 py-2"
-      icon="pi pi-print"
-      pTooltip="Printers"
-      [style]="{'justify-content': 'start'}"
-      [label]="!collapsed() ? 'Printers' : ''"
-      [routerLink]="'/printers'"
-    ></p-button>
-
-    <p-button
-      styleClass="p-button-text p-button-plain w-full text-left px-2 py-2"
-      icon="pi pi-cog"
-      pTooltip="Settings"
-      [style]="{'justify-content': 'start'}"
-      [label]="!collapsed() ? 'Settings' : ''"
-      [routerLink]="'/settings'"
-    ></p-button>
+    </ng-container>
   </div>
 
-  <!-- Toggle collapse -->
-  <div class="absolute bottom-4 left-1">
+  <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2">
     <p-button
-      styleClass="p-button-rounded p-button-secondary"
+      class="flex items-center justify-center"
       [icon]="collapsed() ? 'pi pi-angle-right' : 'pi pi-angle-left'"
-      class="transition-transform"
-      [style]="{width: '2.5rem', height: '2.5rem'}"
+      [rounded]="true"
+      [raised]="true"
+      severity="secondary"
+      [style]="{ width: '2.5rem', height: '2.5rem' }"
       (click)="toggleCollapse()"
-    ></p-button>
+    />
   </div>
 </aside>

@@ -33,6 +33,25 @@ export class PrivateSidebarComponent {
   protected readonly isDarkMode: WritableSignal<boolean> = signal(false);
   protected readonly collapsed: WritableSignal<boolean> = signal(true);
 
+  protected readonly navItems = [
+    {
+      icon: 'pi pi-home',
+      label: 'Dashboard',
+      route: '/dashboard',
+    },
+    { icon: 'pi pi-box', label: 'Jobs', route: '/jobs' },
+    {
+      icon: 'pi pi-print',
+      label: 'Printers',
+      route: '/printers',
+    },
+    {
+      icon: 'pi pi-cog',
+      label: 'Settings',
+      route: '/settings',
+    },
+  ];
+
   constructor(private readonly themeService: ThemeModeService) {
     this.isDarkMode.set(this.themeService.darkMode());
     effect(() => this.isDarkMode.set(this.themeService.darkMode()));

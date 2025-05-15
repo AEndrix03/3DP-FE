@@ -1,10 +1,11 @@
-<div class="flex flex-col gap-4 p-4">
+<div class="flex flex-col gap-4">
   <printer-page-title title="Printers">
     <p-button
       printerPageActions
       label="Add New Printer"
       icon="pi pi-plus"
-      styleClass="p-button-success"
+      severity="success"
+      [raised]="true"
       (click)="createPrinter()"
     />
   </printer-page-title>

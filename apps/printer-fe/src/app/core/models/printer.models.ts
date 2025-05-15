@@ -3,7 +3,8 @@ export interface PrinterDto {
   name: string;
   driverId: string;
   lastSeen: Date;
-  status: PrinterStatusEnum;
+  statusCode: string;
+  imageUrl?: string;
 }
 
 export interface PrinterCreateDto {
@@ -12,6 +13,17 @@ export interface PrinterCreateDto {
 
 export interface PrinterSaveDto extends PrinterCreateDto {
   id: string;
+}
+
+export interface PrinterFilterDto {
+  name?: string;
+  driverId?: string;
+  statusCode?: string;
+}
+
+export interface PrinterStatusDto {
+  code: string;
+  description: string;
 }
 
 export enum PrinterStatusEnum {

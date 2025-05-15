@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { interval, Subscription } from 'rxjs';
+import { EMPTY, interval, Subscription } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { AuthenticationService } from '@3-dp-fe/praetor-auth-kit';
 import { TokenStorageService } from './token-storage.service';
@@ -22,7 +22,7 @@ export class TokenRefreshService {
       .pipe(
         switchMap(() => {
           const refreshToken = this.tokenStorage.getRefreshToken();
-          if (!refreshToken) return [];
+          if (!refreshToken) return EMPTY;
           return this.authService.refresh({ refreshToken });
         }),
         catchError((err, caught) => {

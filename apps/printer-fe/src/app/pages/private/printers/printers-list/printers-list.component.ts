@@ -1,22 +1,24 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import {
   PrinterDto,
-  PrinterStatusEnum,
+  PrinterStatusDto,
 } from '../../../../core/models/printer.models';
-import { Carousel } from 'primeng/carousel';
 import { Tag } from 'primeng/tag';
 import { Button } from 'primeng/button';
-import { NgIf, NgStyle } from '@angular/common';
+import { NgForOf, NgIf } from '@angular/common';
+import { Tooltip } from 'primeng/tooltip';
 
 @Component({
   selector: 'printer-printers-list',
-  imports: [Carousel, Tag, Button, NgIf, NgStyle],
+  imports: [Tag, NgIf, Button, NgForOf, Tooltip],
   templateUrl: './printers-list.component.html',
 })
 export class PrintersListComponent {
   @Input() items: PrinterDto[] = [];
+  @Input() statusList: PrinterStatusDto[] = [];
 
   @Output() viewDetail = new EventEmitter<string>();
+  @Output() delete = new EventEmitter<string>();
 
   public responsiveOptions = [
     {
@@ -41,28 +43,27 @@ export class PrintersListComponent {
     },
   ];
 
-  public getDetailedStatus(status: PrinterStatusEnum) {
-    switch (status) {
-      case PrinterStatusEnum.RUNNING:
-        return {
-          name: 'RUNNING',
-          tag: 'success',
-        };
-      case PrinterStatusEnum.STOPPED:
-        return {
-          name: 'STOPPED',
-          tag: 'warn',
-        };
-      case PrinterStatusEnum.ERROR:
-        return {
-          name: 'ERROR',
-          tag: 'danger',
-        };
-      case PrinterStatusEnum.IDLE:
-        return {
-          name: 'IDLE',
-          tag: 'info',
-        };
+  public getDetailedStatus(statusCode: string): {
+    status: PrinterStatusDto;
+    severity: string;
+  } {
+    const status =
+      this.statusList.filter((status) => status.code === statusCode)[0] ?? null;
+    let severity = null;
+
+    if (status.code === 'RUN') {
+      severity = 'success';
+    } else if (status.code === 'STP') {
+      severity = 'warning';
+    } else if (status.code === 'ERR') {
+      severity = 'danger';
+    } else {
+      severity = 'info';
     }
+
+    return {
+      status,
+      severity,
+    };
   }
 }

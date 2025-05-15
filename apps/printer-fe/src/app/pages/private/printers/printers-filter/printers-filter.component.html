@@ -1,0 +1,24 @@
+<div class="flex flex-col md:flex-row gap-4">
+  <input
+    type="text"
+    [formControl]="nameFc()"
+    placeholder="Search by name"
+    class="p-inputtext p-component w-full md:w-1/2 pl-2"
+  />
+
+  <input
+    type="text"
+    [formControl]="driverIdFc()"
+    placeholder="Search by Driver Id"
+    class="p-inputtext p-component w-full md:w-1/2 pl-2"
+  />
+
+  <p-dropdown
+    [formControl]="statusCodeFc()"
+    [options]="_statusList"
+    placeholder="Status"
+    optionLabel="description"
+    optionValue="code"
+    class="w-full md:w-1/2pl-2"
+  ></p-dropdown>
+</div>

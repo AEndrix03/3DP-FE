@@ -1,0 +1,100 @@
+<div class="card">
+  <p-table
+    #dt
+    [value]="jobs"
+    dataKey="id"
+    [rows]="10"
+    [rowsPerPageOptions]="[10, 25, 50]"
+    [loading]="loading"
+    [paginator]="true"
+    [globalFilterFields]="['name', 'printer', 'slicer', 'status']"
+    [tableStyle]="{ 'min-width': '70rem' }"
+  >
+    <ng-template pTemplate="caption">
+      <div class="flex justify-end">
+        <p-iconfield iconPosition="left">
+          <p-inputicon>
+            <i class="pi pi-search"></i>
+          </p-inputicon>
+          <input
+            pInputText
+            type="text"
+            (input)="dt.filterGlobal($event.target?.['value'], 'contains')"
+            placeholder="Search jobs"
+          />
+        </p-iconfield>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="header">
+      <tr>
+        <th>ID</th>
+        <th>Model Name</th>
+        <th>Printer</th>
+        <th>Status</th>
+        <th>Slicer</th>
+        <th>Submitted At</th>
+        <th>Verified</th>
+      </tr>
+      <tr>
+        <th>
+          <p-columnFilter type="text" field="id" placeholder="Job ID" />
+        </th>
+        <th>
+          <p-columnFilter type="text" field="name" placeholder="Model name" />
+        </th>
+        <th>
+          <p-columnFilter type="text" field="printer" placeholder="Printer name" />
+        </th>
+        <th>
+          <p-columnFilter field="status" matchMode="equals" [showMenu]="false">
+            <ng-template pTemplate="filter" let-value let-filter="filterCallback">
+              <p-dropdown
+                [(ngModel)]="selectedStatus"
+                [options]="statuses"
+                (onChange)="onStatusChange($event.value); filter($event.value)"
+                placeholder="Select status"
+                [showClear]="true"
+              />
+            </ng-template>
+          </p-columnFilter>
+        </th>
+        <th>
+          <p-columnFilter type="text" field="slicer" placeholder="Slicer name" />
+        </th>
+        <th></th>
+        <th>
+          <p-columnFilter type="boolean" field="verified" />
+        </th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-job>
+      <tr (click)="onJobSelect(job)" class="cursor-pointer hover:surface-hover">
+        <td>{{ job.id }}</td>
+        <td>{{ job.name }}</td>
+        <td>{{ job.printer }}</td>
+        <td>
+          <p-tag [value]="job.status" [severity]="getSeverity(job.status)" />
+        </td>
+        <td>{{ job.slicer }}</td>
+        <td>{{ job.submittedAt }}</td>
+        <td>
+          <i
+            class="pi"
+            [ngClass]="{
+              'text-green-500 pi-check-circle': job.verified,
+              'text-red-500 pi-times-circle': !job.verified
+            }"
+          ></i>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="7">No jobs found.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

@@ -2,14 +2,13 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { PrinterDto } from '../../../../core/models/printer.models';
 import { Button } from 'primeng/button';
 import { NgForOf } from '@angular/common';
-import { Tooltip } from 'primeng/tooltip';
 
 @Component({
-  selector: 'printer-printers-list',
-  imports: [Button, NgForOf, Tooltip],
-  templateUrl: './printers-list.component.html',
+  selector: 'printer-printers-grid',
+  imports: [Button, NgForOf],
+  templateUrl: './printers-grid.component.html',
 })
-export class PrintersListComponent {
+export class PrintersGridComponent {
   @Input() items: PrinterDto[] = [];
 
   @Output() viewDetail = new EventEmitter<string>();

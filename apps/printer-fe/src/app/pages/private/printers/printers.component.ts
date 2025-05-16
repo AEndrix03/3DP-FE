@@ -2,20 +2,13 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PageTitleComponent } from '../../../core/components/shared/page-title/page-title.component';
 import { PrinterDto } from '../../../core/models/printer.models';
-import { PrintersListComponent } from './printers-list/printers-list.component';
 import { Button } from 'primeng/button';
 import { createPrinter } from '@schematics/angular/third_party/github.com/Microsoft/TypeScript/lib/typescript';
 import { PrintersFilterComponent } from './printers-filter/printers-filter.component';
 
 @Component({
   selector: 'printer-printers',
-  imports: [
-    CommonModule,
-    PageTitleComponent,
-    PrintersListComponent,
-    Button,
-    PrintersFilterComponent,
-  ],
+  imports: [CommonModule, PageTitleComponent, Button, PrintersFilterComponent],
   templateUrl: './printers.component.html',
 })
 export class PrintersComponent {

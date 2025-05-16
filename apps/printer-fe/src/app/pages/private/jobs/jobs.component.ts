@@ -12,6 +12,8 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { AsyncPipe } from '@angular/common';
 import { JobsModelsGridComponent } from './jobs-models-grid/jobs-models-grid.component';
 import { ModelSimpleDto } from '../../../core/models/model.models';
+import { createPrinter } from '@schematics/angular/third_party/github.com/Microsoft/TypeScript/lib/typescript';
+import { Button } from 'primeng/button';
 
 @Component({
   selector: 'printer-jobs',
@@ -20,6 +22,7 @@ import { ModelSimpleDto } from '../../../core/models/model.models';
     JobsQueueComponent,
     AsyncPipe,
     JobsModelsGridComponent,
+    Button,
   ],
   templateUrl: './jobs.component.html',
 })
@@ -48,7 +51,9 @@ export class JobsComponent {
     ]);
   }
 
-  protected addModel() {}
+  protected importModel() {}
 
-  onJobSelected(jobId: string) {}
+  protected onJobSelected(jobId: string) {}
+
+  protected readonly createPrinter = createPrinter;
 }

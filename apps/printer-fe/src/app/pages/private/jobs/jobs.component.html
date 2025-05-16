@@ -5,6 +5,15 @@
     [jobs]="jobList$ | async"
     (jobSelected)="onJobSelected($event)"
   />
-  <printer-page-title title="Models" />
+  <printer-page-title title="Models">
+    <p-button
+      printerPageActions
+      label="Import Model"
+      icon="pi pi-plus"
+      severity="secondary"
+      [raised]="true"
+      (click)="importModel()"
+    />
+  </printer-page-title>
   <printer-jobs-models-grid [models]="modelList$ | async" />
 </div>

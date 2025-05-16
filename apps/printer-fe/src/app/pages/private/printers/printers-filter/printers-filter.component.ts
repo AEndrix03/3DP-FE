@@ -3,10 +3,19 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { PrinterFilterDto } from '../../../../core/models/printer.models';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DropdownModule } from 'primeng/dropdown';
+import { InputText } from 'primeng/inputtext';
+import { IconField } from 'primeng/iconfield';
+import { InputIcon } from 'primeng/inputicon';
 
 @Component({
   selector: 'printer-printers-filter',
-  imports: [ReactiveFormsModule, DropdownModule],
+  imports: [
+    ReactiveFormsModule,
+    DropdownModule,
+    InputText,
+    IconField,
+    InputIcon,
+  ],
   templateUrl: './printers-filter.component.html',
 })
 export class PrintersFilterComponent {

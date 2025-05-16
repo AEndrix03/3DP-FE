@@ -1,19 +1,8 @@
 <div class="flex flex-col gap-4">
-  <printer-page-title title="Jobs">
-    <p-button
-      printerPageActions
-      label="Import Model"
-      icon="pi pi-plus"
-      severity="success"
-      [raised]="true"
-      (click)="addModel()"
-    />
-  </printer-page-title>
-
+  <printer-page-title title="Jobs" />
   <printer-jobs-queue
-    [loading]="isLoading"
-    [jobs]="jobsList"
+    [loading]="isLoading()"
+    [jobs]="jobList$ | async"
     (jobSelected)="onJobSelected($event)"
-    (statusChanged)="onStatusChanged($event)"
-  ></printer-jobs-queue>
+  />
 </div>

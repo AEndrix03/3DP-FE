@@ -7,9 +7,10 @@
     [rowsPerPageOptions]="[10, 25, 50]"
     [loading]="loading"
     [paginator]="true"
-    [globalFilterFields]="['name', 'printer', 'slicer', 'status']"
+    [globalFilterFields]="['id', 'name', 'printer', 'slicer', 'status']"
     [tableStyle]="{ 'min-width': '70rem' }"
   >
+    <!-- Global search -->
     <ng-template pTemplate="caption">
       <div class="flex justify-end">
         <p-iconfield iconPosition="left">
@@ -17,9 +18,10 @@
             <i class="pi pi-search"></i>
           </p-inputicon>
           <input
+            #searchInput
             pInputText
             type="text"
-            (input)="dt.filterGlobal($event.target?.['value'], 'contains')"
+            (input)="dt.filterGlobal(searchInput.value, 'contains')"
             placeholder="Search jobs"
           />
         </p-iconfield>
@@ -29,22 +31,22 @@
     <ng-template pTemplate="header">
       <tr>
         <th>ID</th>
-        <th>Model Name</th>
+        <th>Model Id</th>
         <th>Printer</th>
         <th>Status</th>
         <th>Slicer</th>
         <th>Submitted At</th>
-        <th>Verified</th>
+        <th></th>
       </tr>
       <tr>
         <th>
           <p-columnFilter type="text" field="id" placeholder="Job ID" />
         </th>
         <th>
-          <p-columnFilter type="text" field="name" placeholder="Model name" />
+          <p-columnFilter type="text" field="modelId" placeholder="Model ID" />
         </th>
         <th>
-          <p-columnFilter type="text" field="printer" placeholder="Printer name" />
+          <p-columnFilter type="text" field="printerName" placeholder="Printer name" />
         </th>
         <th>
           <p-columnFilter field="status" matchMode="equals" [showMenu]="false">
@@ -52,7 +54,7 @@
               <p-dropdown
                 [(ngModel)]="selectedStatus"
                 [options]="statuses"
-                (onChange)="onStatusChange($event.value); filter($event.value)"
+                (onChange)="selectedStatus.set($event.value); filter($event.value)"
                 placeholder="Select status"
                 [showClear]="true"
               />
@@ -60,40 +62,38 @@
           </p-columnFilter>
         </th>
         <th>
-          <p-columnFilter type="text" field="slicer" placeholder="Slicer name" />
+          <p-columnFilter type="text" field="slicerName" placeholder="Slicer" />
         </th>
         <th></th>
-        <th>
-          <p-columnFilter type="boolean" field="verified" />
-        </th>
+        <th></th>
       </tr>
     </ng-template>
 
     <ng-template pTemplate="body" let-job>
-      <tr (click)="onJobSelect(job)" class="cursor-pointer hover:surface-hover">
+      <tr class="cursor-pointer hover:surface-hover">
         <td>{{ job.id }}</td>
-        <td>{{ job.name }}</td>
-        <td>{{ job.printer }}</td>
+        <td>{{ job.modelId }}</td>
+        <td>{{ job.printerName }}</td>
         <td>
-          <p-tag [value]="job.status" [severity]="getSeverity(job.status)" />
+          <p-tag [value]="job.statusDescription" [severity]="getSeverity(job.statusCode)" />
         </td>
-        <td>{{ job.slicer }}</td>
+        <td>{{ job.slicerName }}</td>
         <td>{{ job.submittedAt }}</td>
         <td>
-          <i
-            class="pi"
-            [ngClass]="{
-              'text-green-500 pi-check-circle': job.verified,
-              'text-red-500 pi-times-circle': !job.verified
-            }"
-          ></i>
+          <p-button
+            icon="pi pi-angle-right"
+            variant="text"
+            severity="secondary"
+            [rounded]="true"
+            (onClick)="openJob(job.id)"
+          />
         </td>
       </tr>
     </ng-template>
 
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="7">No jobs found.</td>
+        <td colspan="7">No jobs running</td>
       </tr>
     </ng-template>
   </p-table>

@@ -1,21 +1,21 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <span class="relative block">
-    <i class="pi pi-search absolute top-2.5 left-3 text-gray-400"></i>
+  <span class="relative flex flex-row gap-4 items-center">
+    <i class="pi pi-search absolute text-gray-400  ml-3"></i>
     <input
       type="text"
       [formControl]="nameFc()"
       placeholder="Search by name"
-      class="p-inputtext p-component w-full pl-10 p-2 rounded-md border border-surface-400"
+      class="p-inputtext p-component w-full pl-10 py-2 rounded-md border border-surface-400"
     />
   </span>
 
-  <span class="relative block">
-    <i class="pi pi-id-card absolute top-2.5 left-3 text-gray-400"></i>
+  <span class="relative flex flex-row gap-4 items-center">
+    <i class="pi pi-id-card absolute text-gray-400 ml-3"></i>
     <input
       type="text"
       [formControl]="driverIdFc()"
       placeholder="Search by Driver ID"
-      class="p-inputtext p-component w-full pl-10 p-2 rounded-md border border-surface-400"
+      class="p-inputtext p-component w-full pl-10 py-2 rounded-md border border-surface-400"
     />
   </span>
 </div>

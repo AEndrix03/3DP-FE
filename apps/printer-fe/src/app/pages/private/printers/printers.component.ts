@@ -5,10 +5,17 @@ import { PrinterDto } from '../../../core/models/printer.models';
 import { Button } from 'primeng/button';
 import { createPrinter } from '@schematics/angular/third_party/github.com/Microsoft/TypeScript/lib/typescript';
 import { PrintersFilterComponent } from './printers-filter/printers-filter.component';
+import { PrintersGridComponent } from './printers-grid/printers-grid.component';
 
 @Component({
   selector: 'printer-printers',
-  imports: [CommonModule, PageTitleComponent, Button, PrintersFilterComponent],
+  imports: [
+    CommonModule,
+    PageTitleComponent,
+    Button,
+    PrintersFilterComponent,
+    PrintersGridComponent,
+  ],
   templateUrl: './printers.component.html',
 })
 export class PrintersComponent {

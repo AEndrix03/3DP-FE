@@ -1,1 +1,22 @@
-<p>jobs-models works!</p>
+<div class="border-gray-200 dark:border-gray-700">
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-8 gap-6">
+    <div
+      *ngFor="let model of models"
+      class="bg-gray-900 dark:bg-gray-800 rounded-2xl shadow-lg p-4 flex flex-col justify-between transition transform hover:scale-[1.02] hover:ring hover:ring-blue-500/30 cursor-pointer"
+      (click)="selectedModel.emit(model.id)"
+    >
+      <div>
+        <img
+          [src]="model.previewUrl || 'https://placehold.co/100x100?text=Rendered+Model'"
+          alt="Rendered Model image"
+          class="w-[180px] h-[180px] object-cover rounded-lg"
+        />
+      </div>
+
+      <div>
+        <div class="text-white text-base font-semibold">{{ model.name }}</div>
+        <div class="text-gray-400 text-sm">ID: {{ model.id }}</div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -6,4 +6,5 @@
     (jobSelected)="onJobSelected($event)"
   />
   <printer-page-title title="Models" />
+  <printer-jobs-models-grid [models]="modelList$ | async" />
 </div>

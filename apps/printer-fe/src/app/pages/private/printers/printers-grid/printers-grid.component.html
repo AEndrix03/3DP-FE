@@ -1,14 +1,14 @@
 <div class="pb-4 px-2 border-b border-gray-200 dark:border-gray-700">
-  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-6">
     <div
       *ngFor="let item of items"
-      class="bg-gray-900 dark:bg-gray-800 rounded-2xl shadow-lg p-4 h-[360px] flex flex-col justify-between transition transform hover:scale-[1.02] hover:ring hover:ring-blue-500/30"
+      class="bg-gray-900 dark:bg-gray-800 rounded-2xl shadow-lg p-4 flex flex-col justify-between transition transform hover:scale-[1.02] hover:ring hover:ring-blue-500/30"
     >
       <div class="relative">
         <img
           [src]="item.imageUrl || 'https://placehold.co/240x180?text=3D+Printer'"
           alt="Printer image"
-          class="w-full h-[180px] object-cover rounded-lg"
+          class="w-[240px] h-[240px] object-cover rounded-lg"
         />
       </div>
 

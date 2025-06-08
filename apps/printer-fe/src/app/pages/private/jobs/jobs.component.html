@@ -12,8 +12,19 @@
       icon="pi pi-plus"
       severity="secondary"
       [raised]="true"
-      (click)="importModel()"
+      (click)="fu.choose()"
     />
   </printer-page-title>
   <printer-jobs-models-grid [models]="modelList$ | async" />
 </div>
+
+<p-fileupload
+  #fu
+  name="model"
+  type="file"
+  accept=".stl,.3mf"
+  [auto]="true"
+  [customUpload]="true"
+  [hidden]="true"
+  (uploadHandler)="importModel($event)"
+/>

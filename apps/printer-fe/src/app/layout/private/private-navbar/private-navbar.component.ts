@@ -7,8 +7,8 @@ import {
 } from '@angular/core';
 import { Menu } from 'primeng/menu';
 import { Avatar } from 'primeng/avatar';
-import { ThemeModeButtonComponent } from '../../../core/components/shared/theme-mode-button/theme-mode-button.component';
 import { NgOptimizedImage } from '@angular/common';
+import { ThemeModeButtonComponent } from '../../../core/components/shared/theme-mode-button/theme-mode-button.component';
 
 @Component({
   selector: 'printer-private-navbar',
@@ -17,7 +17,7 @@ import { NgOptimizedImage } from '@angular/common';
   imports: [Menu, Avatar, ThemeModeButtonComponent, NgOptimizedImage],
 })
 export class PrivateNavbarComponent {
-  @Input() userRole: string = '';
+  @Input() userRole = '';
 
   @Output() toggleSidebar = new EventEmitter<void>();
   @Output() profile = new EventEmitter<void>();

@@ -1,0 +1,122 @@
+<div
+  class="relative w-full h-full bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden"
+>
+  <!-- 3D Canvas Container -->
+  <div
+    #container
+    class="w-full h-full cursor-grab active:cursor-grabbing"
+    [class.cursor-not-allowed]="loading()"
+  ></div>
+
+  <!-- Loading Overlay -->
+  <div
+    *ngIf="loading()"
+    class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10"
+  >
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl">
+      <div class="text-center mb-4">
+        <i class="pi pi-spin pi-spinner text-2xl text-blue-500"></i>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+          Loading 3D Model...
+        </p>
+      </div>
+      <p-progressBar
+        [value]="loadingProgress()?.percentage || 0"
+        [showValue]="true"
+        styleClass="w-64"
+      />
+      <p class="text-xs text-gray-500 mt-2 text-center">
+        {{ formatBytes(loadingProgress()?.loaded || 0) }} /
+        {{ formatBytes(loadingProgress()?.total || 0) }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div
+    *ngIf="error()"
+    class="absolute inset-0 flex items-center justify-center z-10"
+  >
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl text-center">
+      <i class="pi pi-exclamation-triangle text-3xl text-red-500 mb-4"></i>
+      <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+        Failed to load model
+      </h3>
+      <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+        {{ error() }}
+      </p>
+      <p-button
+        label="Retry"
+        icon="pi pi-refresh"
+        size="small"
+        severity="secondary"
+        (onClick)="retry()"
+      />
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="absolute top-4 left-4 flex flex-col gap-2 z-20">
+    <p-button
+      icon="pi pi-refresh"
+      [text]="true"
+      [rounded]="true"
+      severity="secondary"
+      size="small"
+      pTooltip="Reset View"
+      tooltipPosition="right"
+      (onClick)="resetView()"
+      [disabled]="loading() || !!error()"
+    />
+    <p-button
+      [icon]="wireframe() ? 'pi pi-eye' : 'pi pi-eye-slash'"
+      [text]="true"
+      [rounded]="true"
+      severity="secondary"
+      size="small"
+      pTooltip="Toggle Wireframe"
+      tooltipPosition="right"
+      (onClick)="toggleWireframe()"
+      [disabled]="loading() || !!error()"
+    />
+    <p-button
+      [icon]="autoRotate() ? 'pi pi-pause' : 'pi pi-play'"
+      [text]="true"
+      [rounded]="true"
+      severity="secondary"
+      size="small"
+      pTooltip="Toggle Auto Rotate"
+      tooltipPosition="right"
+      (onClick)="toggleAutoRotate()"
+      [disabled]="loading() || !!error()"
+    />
+  </div>
+
+  <!-- Model Info -->
+  <div
+    *ngIf="modelInfo() && !loading() && !error()"
+    class="absolute bottom-4 left-4 bg-black bg-opacity-60 text-white px-3 py-2 rounded text-xs z-20"
+  >
+    <div>Size: {{ formatVector(modelInfo()!.size) }}</div>
+    <div *ngIf="modelInfo()!.animations.length > 0">
+      Animations: {{ modelInfo()!.animations.length }}
+    </div>
+  </div>
+
+  <!-- Fullscreen Toggle -->
+  <div class="absolute top-4 right-4 z-20">
+    <p-button
+      [icon]="
+        isFullscreen() ? 'pi pi-window-minimize' : 'pi pi-window-maximize'
+      "
+      [text]="true"
+      [rounded]="true"
+      severity="secondary"
+      size="small"
+      pTooltip="Toggle Fullscreen"
+      tooltipPosition="left"
+      (onClick)="toggleFullscreen()"
+      [disabled]="loading() || !!error()"
+    />
+  </div>
+</div>

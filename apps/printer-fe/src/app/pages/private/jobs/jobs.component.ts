@@ -14,6 +14,7 @@ import { JobsModelsGridComponent } from './jobs-models-grid/jobs-models-grid.com
 import { ModelSimpleDto } from '../../../core/models/model.models';
 import { createPrinter } from '@schematics/angular/third_party/github.com/Microsoft/TypeScript/lib/typescript';
 import { Button } from 'primeng/button';
+import { FileUpload, FileUploadHandlerEvent } from 'primeng/fileupload';
 
 @Component({
   selector: 'printer-jobs',
@@ -23,6 +24,7 @@ import { Button } from 'primeng/button';
     AsyncPipe,
     JobsModelsGridComponent,
     Button,
+    FileUpload,
   ],
   templateUrl: './jobs.component.html',
 })
@@ -51,7 +53,7 @@ export class JobsComponent {
     ]);
   }
 
-  protected importModel() {}
+  protected importModel(event: FileUploadHandlerEvent) {}
 
   protected onJobSelected(jobId: string) {}
 

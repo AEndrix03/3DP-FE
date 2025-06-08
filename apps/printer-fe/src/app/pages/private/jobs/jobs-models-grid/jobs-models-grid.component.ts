@@ -19,5 +19,5 @@ export class JobsModelsGridComponent {
   @Input() models: ModelSimpleDto[] = [];
   public readonly modelsGlb: InputSignal<Record<string, Blob>> = input({});
 
-  @Output() selectedModel = new EventEmitter<string>();
+  @Output()  selectedModel = new EventEmitter<string>();
 }

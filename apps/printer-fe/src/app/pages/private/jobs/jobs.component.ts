@@ -14,6 +14,7 @@ import {
   BehaviorSubject,
   catchError,
   filter,
+  finalize,
   map,
   Observable,
   of,
@@ -28,6 +29,7 @@ import { createPrinter } from '@schematics/angular/third_party/github.com/Micros
 import { Button } from 'primeng/button';
 import { FileUpload, FileUploadHandlerEvent } from 'primeng/fileupload';
 import { ModelService } from '../../../services/model.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'printer-jobs',
@@ -67,7 +69,10 @@ export class JobsComponent implements OnInit, OnDestroy {
 
   private readonly unsubscribe$ = new Subject<void>();
 
-  constructor(private readonly modelService: ModelService) {}
+  constructor(
+    private readonly modelService: ModelService,
+    private readonly router: Router
+  ) {}
 
   ngOnInit(): void {
     this.loadModels();
@@ -91,11 +96,26 @@ export class JobsComponent implements OnInit, OnDestroy {
   }
 
   protected importModel(event: FileUploadHandlerEvent) {
-    // Questo metodo è attualmente vuoto, ma deve essere presente.
+    this.loading.set(true);
+    this.modelService
+      .uploadModel(event.files[0])
+      .pipe(
+        catchError(() => of(null)),
+        filter((id) => id != null),
+        tap(() => this.loadModels()),
+        finalize(() => this.loading.set(false))
+      )
+      .subscribe();
   }
 
   protected onJobSelected(jobId: string) {
     // Questo metodo è attualmente vuoto, ma deve essere presente.
+  }
+
+  protected onModelSelected(modelId: string) {
+    this.router.navigate(['jobs/model-detail'], {
+      queryParams: { id: modelId },
+    });
   }
 
   protected readonly createPrinter = createPrinter;

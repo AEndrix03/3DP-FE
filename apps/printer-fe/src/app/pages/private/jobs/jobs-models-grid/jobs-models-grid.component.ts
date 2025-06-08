@@ -1,6 +1,5 @@
 import {
   Component,
-  computed,
   EventEmitter,
   input,
   Input,
@@ -18,9 +17,7 @@ import { ModelViewerComponent } from '../../../../core/components/shared/three/m
 })
 export class JobsModelsGridComponent {
   @Input() models: ModelSimpleDto[] = [];
-  protected readonly modelsGlb: InputSignal<Record<string, File>> = input({});
+  public readonly modelsGlb: InputSignal<Record<string, Blob>> = input({});
 
   @Output() selectedModel = new EventEmitter<string>();
-
-  protected readonly glb = (id: string) => computed(() => this.modelsGlb()[id]);
 }

@@ -41,6 +41,10 @@ export class ThreeJsModelService {
           const center = boundingBox.getCenter(new THREE.Vector3());
           const size = boundingBox.getSize(new THREE.Vector3());
 
+          console.log('Model loaded from URL successfully:');
+          console.log('  Scene children count:', gltf.scene.children.length);
+          console.log('  Bounding box size:', size.x, size.y, size.z);
+
           resolve({
             scene: gltf.scene,
             animations: gltf.animations,
@@ -74,14 +78,48 @@ export class ThreeJsModelService {
    * @param file The File object containing GLB data
    * @returns Promise<ModelLoadResult>
    */
-  async loadModelFromFile(file: File): Promise<ModelLoadResult> {
-    const url = URL.createObjectURL(file);
-    try {
-      const result = await this.loadModel(url);
-      return result;
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+  async loadModelFromFile(file: Blob): Promise<ModelLoadResult> {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      this.loader.load(
+        url,
+        (gltf) => {
+          const boundingBox = new THREE.Box3().setFromObject(gltf.scene);
+          const center = boundingBox.getCenter(new THREE.Vector3());
+          const size = boundingBox.getSize(new THREE.Vector3());
+
+          console.log('Model loaded from Blob successfully:');
+          console.log('  Scene children count:', gltf.scene.children.length);
+          console.log('  Bounding box size:', size.x, size.y, size.z);
+
+          resolve({
+            scene: gltf.scene,
+            animations: gltf.animations,
+            boundingBox,
+            center,
+            size,
+          });
+
+          this.loadingSubject.next(null);
+          URL.revokeObjectURL(url); // Revoke the URL to release memory
+        },
+        (progress) => {
+          const loadProgress: ModelLoadProgress = {
+            loaded: progress.loaded,
+            total: progress.total,
+            percentage:
+              progress.total > 0 ? (progress.loaded / progress.total) * 100 : 0,
+          };
+          this.loadingSubject.next(loadProgress);
+        },
+        (error) => {
+          console.error('Error loading model from Blob:', error);
+          this.loadingSubject.next(null);
+          URL.revokeObjectURL(url); // Revoke the URL even on error
+          reject(error);
+        }
+      );
+    });
   }
 
   /**
@@ -170,27 +208,52 @@ export class ThreeJsModelService {
    * Center and scale model to fit in view
    * @param model The loaded model
    * @param camera The camera
-   * @param targetSize Optional target size for scaling
    */
-  centerAndScaleModel(
-    model: ModelLoadResult,
-    camera: THREE.PerspectiveCamera,
-    targetSize = 4
-  ) {
-    // Center the model
+  centerAndScaleModel(model: ModelLoadResult, camera: THREE.PerspectiveCamera) {
+    // Center the model's geometry to the origin
     model.scene.position.sub(model.center);
 
-    // Scale the model
-    const maxDimension = Math.max(model.size.x, model.size.y, model.size.z);
-    if (maxDimension > 0) {
-      const scale = targetSize / maxDimension;
-      model.scene.scale.setScalar(scale);
-    }
+    // Calculate bounding sphere from bounding box
+    const sphere = new THREE.Sphere();
+    model.boundingBox.getBoundingSphere(sphere);
 
-    // Adjust camera position
-    const distance = targetSize * 2;
-    camera.position.set(distance, distance, distance);
-    camera.lookAt(0, 0, 0);
+    // Calculate camera distance to fit the sphere
+    const fov = camera.fov * (Math.PI / 180); // Convert FOV to radians
+    let distance = sphere.radius / Math.tan(fov / 2); // Base distance
+
+    // Add some padding to the distance for better visual spacing
+    distance *= 1.8; // Reduced model size slightly (from 1.5 to 1.8)
+
+    // Set camera position and look at the center of the model (which is now at origin)
+    camera.position.copy(sphere.center); // Start from the model's center (now 0,0,0)
+    camera.position.z += distance; // Move back along Z-axis
+
+    // If you want a more isometric or general view, you could set specific coordinates:
+    // camera.position.set(distance, distance, distance);
+
+    camera.lookAt(sphere.center); // Look at the model's center (now 0,0,0)
+
+    // Log calculated camera parameters
+    console.log('centerAndScaleModel: Camera parameters applied:');
+    console.log('  Calculated Distance:', distance);
+    console.log(
+      '  Camera Final Position:',
+      camera.position.x,
+      camera.position.y,
+      camera.position.z
+    );
+    console.log(
+      '  Camera LookAt (Target):',
+      sphere.center.x,
+      sphere.center.y,
+      sphere.center.z
+    );
+    console.log('  Camera Near/Far:', camera.near, camera.far);
+
+    // Adjust camera near/far clipping planes based on model size for better rendering
+    camera.near = distance / 100;
+    camera.far = distance * 100;
+    camera.updateProjectionMatrix();
   }
 
   /**

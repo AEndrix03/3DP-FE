@@ -12,6 +12,7 @@ import {
   signal,
   computed,
   effect,
+  input,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProgressBarModule } from 'primeng/progressbar';
@@ -56,8 +57,9 @@ export interface ModelViewerOptions {
 export class ModelViewerComponent implements OnInit, OnDestroy {
   @ViewChild('container', { static: true }) container!: ElementRef<HTMLElement>;
 
-  @Input() modelUrl: string | null = null;
-  @Input() modelFile: File | null = null;
+  // Convert @Input to InputSignal for reactivity
+  modelUrl = input<string | null>(null);
+  modelFile = input<Blob | null>(null);
   @Input() options: ModelViewerOptions = {};
 
   @Output() modelLoaded = new EventEmitter<ModelLoadResult>();
@@ -69,7 +71,7 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
   protected readonly loadingProgress = signal<ModelLoadProgress | null>(null);
   protected readonly modelInfo = signal<ModelLoadResult | null>(null);
   protected readonly wireframe = signal(false);
-  protected readonly autoRotate = signal(false);
+  protected readonly autoRotate = signal(true);
   protected readonly isFullscreen = signal(false);
 
   // Computed signals
@@ -95,7 +97,10 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
 
     // Watch for input changes
     effect(() => {
-      if (this.modelUrl || this.modelFile) {
+      console.log('ModelViewerComponent effect triggered.');
+      console.log('  modelUrl:', this.modelUrl());
+      console.log('  modelFile:', this.modelFile());
+      if (this.modelUrl() || this.modelFile()) {
         this.loadModel();
       }
     });
@@ -161,7 +166,11 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
   }
 
   private async loadModel(): Promise<void> {
-    if (!this.modelUrl && !this.modelFile) return;
+    console.log('ModelViewerComponent loadModel() called.');
+    if (!this.modelUrl() && !this.modelFile()) {
+      console.log('  No model URL or file provided. Returning.');
+      return;
+    }
 
     this.loading.set(true);
     this.error.set(null);
@@ -169,10 +178,12 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
     try {
       let result: ModelLoadResult;
 
-      if (this.modelFile) {
-        result = await this.modelService.loadModelFromFile(this.modelFile);
-      } else if (this.modelUrl) {
-        result = await this.modelService.loadModel(this.modelUrl);
+      if (this.modelFile()) {
+        console.log('  Loading model from file (Blob).');
+        result = await this.modelService.loadModelFromFile(this.modelFile());
+      } else if (this.modelUrl()) {
+        console.log('  Loading model from URL.');
+        result = await this.modelService.loadModel(this.modelUrl());
       } else {
         throw new Error('No model source provided');
       }
@@ -187,6 +198,21 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
       if (this.scene && this.camera) {
         this.scene.add(result.scene);
         this.currentModel = result.scene;
+
+        // Log model details before centering and scaling
+        console.log('Model details before centering and scaling:');
+        console.log(
+          '  Bounding Box:',
+          result.boundingBox.min,
+          result.boundingBox.max
+        );
+        console.log(
+          '  Center:',
+          result.center.x,
+          result.center.y,
+          result.center.z
+        );
+        console.log('  Size:', result.size.x, result.size.y, result.size.z);
 
         // Center and scale model
         this.modelService.centerAndScaleModel(result, this.camera);

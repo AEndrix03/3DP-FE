@@ -15,7 +15,10 @@
       (click)="fu.choose()"
     />
   </printer-page-title>
-  <printer-jobs-models-grid [models]="modelList$ | async" />
+  <printer-jobs-models-grid
+    [models]="modelList$ | async"
+    [modelsGlb]="glbModels()"
+  />
 </div>
 
 <p-fileupload

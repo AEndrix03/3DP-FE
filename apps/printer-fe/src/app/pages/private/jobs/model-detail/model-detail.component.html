@@ -1,1 +1,14 @@
-<p>model-detail works!</p>
+<main class="flex flex-col p-3 justify-around items-center">
+  <div class="w-full flex flex-row justify-around">
+    <div
+      class="basis-1/2 w-full max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-auto aspect-square"
+    >
+      <printer-model-detail-preview [blob]="preview()" />
+    </div>
+    <div
+      class="basis-1/2 w-full max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-auto aspect-square"
+    >
+      <printer-model-detail-info [model]="model()"></printer-model-detail-info>
+    </div>
+  </div>
+</main>

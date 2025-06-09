@@ -44,24 +44,26 @@
     />
     <label for="resourceId">Resource Id</label>
   </p-iftalabel>
-  <div class="flex flex-row gap-8">
-    <p-iftalabel>
+  <div class="flex flex-row justify-between">
+    <p-iftalabel class="basis-6/13">
       <p-datepicker
         [(ngModel)]="model().createdAt"
         [disabled]="true"
         inputId="createDate"
         [showIcon]="false"
         iconDisplay="input"
+        styleClass="w-full"
       />
       <label for="createDate">Created At</label>
     </p-iftalabel>
-    <p-iftalabel>
+    <p-iftalabel class="basis-6/13">
       <p-datepicker
         [(ngModel)]="model().updatedAt"
         [disabled]="true"
         inputId="updateDate"
         [showIcon]="false"
         iconDisplay="input"
+        styleClass="w-full"
       />
       <label for="updateDate">Updated At</label>
     </p-iftalabel>

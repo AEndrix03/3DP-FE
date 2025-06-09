@@ -1,0 +1,45 @@
+<p-card [style]="{ background: '#333', padding: '12px 16px' }">
+  <ng-template #header
+    ><span class="font-bold">Slice Alta Qualità</span></ng-template
+  >
+  <div class="flex flex-row justify-between items-center">
+    <p>Layer: 0.2mm•Infill: 20%•Tempo: 2h 15m•Filamento: 15.2g</p>
+    <div class="flex flex-row gap-4">
+      <p-button
+        icon="pi pi-eye"
+        variant="text"
+        severity="secondary"
+        pTooltip="More info"
+        tooltipPosition="bottom"
+        size="small"
+      />
+      <p-button
+        icon="pi pi-play"
+        variant="text"
+        severity="secondary"
+        pTooltip="Start Print"
+        tooltipPosition="bottom"
+        size="small"
+      />
+      <p-button
+        icon="pi pi-download"
+        variant="text"
+        severity="secondary"
+        tooltipPosition="bottom"
+        pTooltip="Download"
+        size="small"
+      />
+      <p-button
+        icon="pi pi-trash"
+        variant="text"
+        severity="secondary"
+        tooltipPosition="bottom"
+        pTooltip="Delete"
+        size="small"
+      />
+    </div>
+  </div>
+  <ng-template #footer
+    ><span class="italic text-sm">Created At: 06/06/2006</span></ng-template
+  >
+</p-card>

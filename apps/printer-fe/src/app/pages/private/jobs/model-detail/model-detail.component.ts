@@ -10,12 +10,15 @@ import {
   takeUntil,
   tap,
 } from 'rxjs';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ModelDetailInfoComponent } from './model-detail-info/model-detail-info.component';
 import { ModelService } from 'apps/printer-fe/src/app/services/model.service';
 import { FileService } from 'apps/printer-fe/src/app/services/file.service';
 import { ModelDto } from 'apps/printer-fe/src/app/core/models/model.models';
 import { ModelDetailPreviewComponent } from './model-detail-preview/model-detail-preview.component';
+import { PageTitleComponent } from '../../../../core/components/shared/page-title/page-title.component';
+import { ModelDetailTabsComponent } from './model-detail-tabs/model-detail-tabs.component';
+import { ButtonModule } from 'primeng/button';
 
 @Component({
   selector: 'printer-model-detail',
@@ -23,6 +26,9 @@ import { ModelDetailPreviewComponent } from './model-detail-preview/model-detail
     CommonModule,
     ModelDetailPreviewComponent,
     ModelDetailInfoComponent,
+    PageTitleComponent,
+    ModelDetailTabsComponent,
+    ButtonModule,
   ],
   templateUrl: './model-detail.component.html',
 })
@@ -38,7 +44,8 @@ export class ModelDetailComponent {
   constructor(
     private readonly activatedRoute: ActivatedRoute,
     private readonly modelService: ModelService,
-    private readonly fileService: FileService
+    private readonly fileService: FileService,
+    private readonly router: Router
   ) {
     this.activatedRoute.queryParamMap
       .pipe(
@@ -66,5 +73,9 @@ export class ModelDetailComponent {
             .subscribe((blob) => this.preview.set(blob))
         : null
     );
+  }
+
+  protected back() {
+    this.router.navigate(['jobs']);
   }
 }

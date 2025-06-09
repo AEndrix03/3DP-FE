@@ -1,7 +1,19 @@
-<div class="flex justify-between items-center py-4 px-2 border-b
-            border-gray-200 dark:border-gray-700">
-  <h1 class="text-2xl font-semibold">{{ title }}</h1>
+<header
+  class="flex flex-row justify-between items-center py-4 px-2 border-b border-gray-200 dark:border-gray-700"
+>
+  <div class="flex flex-row items-center gap-8">
+    <p-button
+      *ngIf="showBack"
+      icon="pi pi-arrow-left"
+      [rounded]="true"
+      aria-label="Go back"
+      size="large"
+      severity="secondary"
+      (onClick)="back.emit()"
+    />
+    <h1 class="text-4xl font-semibold">{{ title }}</h1>
+  </div>
   <printer-float-line>
     <ng-content select="[printerPageActions]"></ng-content>
   </printer-float-line>
-</div>
+</header>

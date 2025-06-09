@@ -24,12 +24,13 @@ import {
 } from 'rxjs';
 import { AsyncPipe } from '@angular/common';
 import { JobsModelsGridComponent } from './jobs-models-grid/jobs-models-grid.component';
-import { ModelSimpleDto } from '../../../core/models/model.models';
 import { createPrinter } from '@schematics/angular/third_party/github.com/Microsoft/TypeScript/lib/typescript';
 import { Button } from 'primeng/button';
 import { FileUpload, FileUploadHandlerEvent } from 'primeng/fileupload';
 import { ModelService } from '../../../services/model.service';
 import { Router } from '@angular/router';
+import { ModelDto } from '../../../core/models/model.models';
+import { FileService } from '../../../services/file.service';
 
 @Component({
   selector: 'printer-jobs',
@@ -59,17 +60,19 @@ export class JobsComponent implements OnInit, OnDestroy {
   private readonly jobSubject$: Subject<JobSimpleDto[]> = new BehaviorSubject<
     JobSimpleDto[]
   >([]);
-  private readonly modelsSubject$: Subject<ModelSimpleDto[]> =
-    new BehaviorSubject<ModelSimpleDto[]>([]);
+  private readonly modelsSubject$: Subject<ModelDto[]> = new BehaviorSubject<
+    ModelDto[]
+  >([]);
 
   protected readonly jobList$: Observable<JobSimpleDto[]> =
     this.jobSubject$.asObservable();
-  protected readonly modelList$: Observable<ModelSimpleDto[]> =
+  protected readonly modelList$: Observable<ModelDto[]> =
     this.modelsSubject$.asObservable();
 
   private readonly unsubscribe$ = new Subject<void>();
 
   constructor(
+    private readonly fileService: FileService,
     private readonly modelService: ModelService,
     private readonly router: Router
   ) {}
@@ -84,7 +87,7 @@ export class JobsComponent implements OnInit, OnDestroy {
         tap((models) =>
           models
             .filter((model) => this._glbModels()[model.id] == null)
-            .forEach((model) => this.loadGlb(model.id))
+            .forEach((model) => this.loadGlb(model.resourceId))
         )
       )
       .subscribe();
@@ -97,7 +100,7 @@ export class JobsComponent implements OnInit, OnDestroy {
 
   protected importModel(event: FileUploadHandlerEvent) {
     this.loading.set(true);
-    this.modelService
+    this.fileService
       .uploadModel(event.files[0])
       .pipe(
         catchError(() => of(null)),
@@ -136,7 +139,7 @@ export class JobsComponent implements OnInit, OnDestroy {
 
   private loadGlb(id: string) {
     console.log(`loadGlb() called for ID: ${id}`);
-    this.modelService
+    this.fileService
       .downloadGlb(id)
       .pipe(
         catchError((err) => {

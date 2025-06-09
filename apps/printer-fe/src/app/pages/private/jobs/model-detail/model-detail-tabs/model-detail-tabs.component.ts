@@ -5,6 +5,5 @@ import { CommonModule } from '@angular/common';
   selector: 'printer-model-detail-tabs',
   imports: [CommonModule],
   templateUrl: './model-detail-tabs.component.html',
-  styleUrl: './model-detail-tabs.component.css',
 })
 export class ModelDetailTabsComponent {}

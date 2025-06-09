@@ -7,7 +7,7 @@ import {
   Output,
 } from '@angular/core';
 import { NgForOf } from '@angular/common';
-import { ModelSimpleDto } from '../../../../core/models/model.models';
+import { ModelDto } from '../../../../core/models/model.models';
 import { ModelViewerComponent } from '../../../../core/components/shared/three/model-viewer/model-viewer.component';
 
 @Component({
@@ -16,7 +16,7 @@ import { ModelViewerComponent } from '../../../../core/components/shared/three/m
   templateUrl: './jobs-models-grid.component.html',
 })
 export class JobsModelsGridComponent {
-  @Input() models: ModelSimpleDto[] = [];
+  @Input() models: ModelDto[] = [];
   public readonly modelsGlb: InputSignal<Record<string, Blob>> = input({});
 
   @Output()  selectedModel = new EventEmitter<string>();

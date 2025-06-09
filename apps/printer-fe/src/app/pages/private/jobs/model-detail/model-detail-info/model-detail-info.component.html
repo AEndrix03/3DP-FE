@@ -1,3 +1,69 @@
-<article>
-  <h1>{{ model()?.name || 'Hilber cube.stl' }}</h1>
+<article class="flex flex-col gap-2" *ngIf="model() !== null">
+  <p-iftalabel>
+    <input
+      pInputText
+      id="name"
+      [(ngModel)]="model().name"
+      autocomplete="off"
+      class="w-full"
+      max="64"
+    />
+    <label for="name">Name</label>
+  </p-iftalabel>
+  <p-iftalabel>
+    <textarea
+      pTextarea
+      id="description"
+      [(ngModel)]="model().description"
+      rows="5"
+      class="w-full"
+      style="resize: none"
+      max="512"
+    ></textarea>
+    <label for="description">Description</label>
+  </p-iftalabel>
+  <p-iftalabel>
+    <input
+      pInputText
+      id="modelId"
+      [disabled]="true"
+      [(ngModel)]="model().id"
+      autocomplete="off"
+      class="w-full"
+    />
+    <label for="modelId">Model Id</label>
+  </p-iftalabel>
+  <p-iftalabel>
+    <input
+      pInputText
+      id="resourceId"
+      [disabled]="true"
+      [(ngModel)]="model().resourceId"
+      autocomplete="off"
+      class="w-full"
+    />
+    <label for="resourceId">Resource Id</label>
+  </p-iftalabel>
+  <div class="flex flex-row gap-8">
+    <p-iftalabel>
+      <p-datepicker
+        [(ngModel)]="model().createdAt"
+        [disabled]="true"
+        inputId="createDate"
+        [showIcon]="false"
+        iconDisplay="input"
+      />
+      <label for="createDate">Created At</label>
+    </p-iftalabel>
+    <p-iftalabel>
+      <p-datepicker
+        [(ngModel)]="model().updatedAt"
+        [disabled]="true"
+        inputId="updateDate"
+        [showIcon]="false"
+        iconDisplay="input"
+      />
+      <label for="updateDate">Updated At</label>
+    </p-iftalabel>
+  </div>
 </article>

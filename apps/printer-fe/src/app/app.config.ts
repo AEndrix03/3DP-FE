@@ -25,6 +25,7 @@ import {
 } from '@angular/common/http';
 import { initializeAppFn } from './core/services/app-init.service';
 import { LoginEffectService } from './core/services/auth/login-effect.service';
+import { dateInterceptor } from './core/interceptors/date.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -33,7 +34,10 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(initializeAppFn),
     provideRouter(appRoutes),
     provideAnimationsAsync(),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideHttpClient(
+      withFetch(),
+      withInterceptors([authInterceptor, dateInterceptor])
+    ),
     providePraetor(
       environment.praetorApiUrl,
       environment.applicationName,

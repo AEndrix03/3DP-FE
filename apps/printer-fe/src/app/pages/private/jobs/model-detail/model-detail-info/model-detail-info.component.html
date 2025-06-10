@@ -3,7 +3,7 @@
     <input
       pInputText
       id="name"
-      [(ngModel)]="model().name"
+      [formControl]="nameFc"
       autocomplete="off"
       class="w-full"
       max="64"
@@ -14,7 +14,7 @@
     <textarea
       pTextarea
       id="description"
-      [(ngModel)]="model().description"
+      [formControl]="descriptionFc"
       rows="5"
       class="w-full"
       style="resize: none"
@@ -26,8 +26,7 @@
     <input
       pInputText
       id="modelId"
-      [disabled]="true"
-      [(ngModel)]="model().id"
+      [formControl]="idFc"
       autocomplete="off"
       class="w-full"
     />
@@ -37,8 +36,7 @@
     <input
       pInputText
       id="resourceId"
-      [disabled]="true"
-      [(ngModel)]="model().resourceId"
+      [formControl]="resourceIdFc"
       autocomplete="off"
       class="w-full"
     />
@@ -47,8 +45,7 @@
   <div class="flex flex-row justify-between">
     <p-iftalabel class="basis-6/13">
       <p-datepicker
-        [(ngModel)]="model().createdAt"
-        [disabled]="true"
+        [formControl]="createdAtFc"
         inputId="createDate"
         [showIcon]="false"
         iconDisplay="input"
@@ -58,8 +55,7 @@
     </p-iftalabel>
     <p-iftalabel class="basis-6/13">
       <p-datepicker
-        [(ngModel)]="model().updatedAt"
-        [disabled]="true"
+        [formControl]="updatedAtFc"
         inputId="updateDate"
         [showIcon]="false"
         iconDisplay="input"

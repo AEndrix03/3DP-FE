@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { ModelDto } from '../core/models/model.models';
+import { ModelDto, ModelSaveDto } from '../core/models/model.models';
 import { Observable } from 'rxjs';
 import { UriCostants } from '../core/costants/uri-costants';
 
@@ -20,5 +20,9 @@ export class ModelService {
     return this.http.get<ModelDto>(`${UriCostants.modelsUrl}`, {
       params,
     });
+  }
+
+  public saveModel(model: ModelSaveDto): Observable<string> {
+    return this.http.patch<string>(`${UriCostants.modelsUrl}`, model);
   }
 }

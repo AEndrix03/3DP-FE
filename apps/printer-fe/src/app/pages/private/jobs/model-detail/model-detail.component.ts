@@ -1,4 +1,12 @@
-import { Component, effect, signal, WritableSignal } from '@angular/core';
+import {
+  Component,
+  effect,
+  Signal,
+  signal,
+  untracked,
+  viewChild,
+  WritableSignal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   BehaviorSubject,
@@ -19,6 +27,7 @@ import { ModelDetailPreviewComponent } from './model-detail-preview/model-detail
 import { PageTitleComponent } from '../../../../core/components/shared/page-title/page-title.component';
 import { ModelDetailTabsComponent } from './model-detail-tabs/model-detail-tabs.component';
 import { ButtonModule } from 'primeng/button';
+import { saveAs } from 'file-saver';
 
 @Component({
   selector: 'printer-model-detail',
@@ -35,6 +44,10 @@ import { ButtonModule } from 'primeng/button';
 export class ModelDetailComponent {
   protected readonly model: WritableSignal<ModelDto> = signal(null);
   protected readonly preview: WritableSignal<Blob> = signal(null);
+
+  private readonly _info: Signal<ModelDetailInfoComponent> = viewChild(
+    ModelDetailInfoComponent
+  );
 
   private readonly modelSubject: BehaviorSubject<string> =
     new BehaviorSubject<string>(null);
@@ -73,6 +86,20 @@ export class ModelDetailComponent {
             .subscribe((blob) => this.preview.set(blob))
         : null
     );
+  }
+
+  protected downloadStl() {
+    this.fileService
+      .download(this.model().resourceId)
+      .pipe(tap((blob) => saveAs(blob, `${this.model().name}.stl`)))
+      .subscribe();
+  }
+
+  protected save() {
+    this.modelService
+      .saveModel(untracked(() => this._info().data))
+      .pipe(tap((id) => this.modelSubject.next(id)))
+      .subscribe();
   }
 
   protected back() {

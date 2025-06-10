@@ -6,3 +6,9 @@ export interface ModelDto {
   updatedAt: Date;
   resourceId: string;
 }
+
+export interface ModelSaveDto {
+  id: string;
+  name: string;
+  description: string;
+}

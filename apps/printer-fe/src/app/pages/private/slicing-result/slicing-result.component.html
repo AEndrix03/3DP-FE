@@ -1,0 +1,25 @@
+<printer-page-title
+  [showBack]="showBack()"
+  [title]="`Slicing Result`"
+  (back)="back()?.()"
+>
+  <div printerPageActions class="flex flex-row gap-4"></div>
+</printer-page-title>
+
+<main class="flex flex-col p-4 gap-4 justify-between items-center">
+  <div class="w-full flex flex-row justify-between">
+    <div
+      class="basis-1/2 w-full max-w-sm md:max-w-md lg:max-w-lg mx-auto aspect-square"
+    >
+      <printer-slicing-simulator />
+    </div>
+    <div
+      class="basis-1/2 w-full max-w-sm md:max-w-md lg:max-w-lg mx-auto aspect-square"
+    >
+      <printer-slicing-result-info />
+    </div>
+  </div>
+  <div class="w-full">
+    <printer-slicing-result-tabs />
+  </div>
+</main>

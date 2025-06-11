@@ -12,10 +12,18 @@
       </div>
     </ng-template>
     <div class="flex flex-col gap-2 py-4">
-      <printer-model-detail-tab-slicing-card />
-      <printer-model-detail-tab-slicing-card />
-      <printer-model-detail-tab-slicing-card />
-      <printer-model-detail-tab-slicing-card />
+      <printer-model-detail-tab-slicing-card
+        (openDetail)="openDetail.emit($event)"
+      />
+      <printer-model-detail-tab-slicing-card
+        (openDetail)="openDetail.emit($event)"
+      />
+      <printer-model-detail-tab-slicing-card
+        (openDetail)="openDetail.emit($event)"
+      />
+      <printer-model-detail-tab-slicing-card
+        (openDetail)="openDetail.emit($event)"
+      />
     </div>
   </p-card>
 </article>

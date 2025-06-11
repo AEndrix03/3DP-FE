@@ -7,9 +7,11 @@
       </p-tab>
     </p-tablist>
     <p-tabpanels>
-        <p-tabpanel value="0">
-            <printer-model-detail-tab-slicing />
-        </p-tabpanel>
+      <p-tabpanel value="0">
+        <printer-model-detail-tab-slicing
+          (openDetail)="openSlicingResultDetail($event)"
+        />
+      </p-tabpanel>
     </p-tabpanels>
   </p-tabs>
 </article>

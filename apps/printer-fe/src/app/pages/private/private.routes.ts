@@ -3,6 +3,7 @@ import { DashboardComponent } from './dashboard/dashboard.component';
 import { LayoutPrivateComponent } from '../../layout/private/layout-private.component';
 import { ProfileComponent } from './profile/profile.component';
 import { PrintersComponent } from './printers/printers.component';
+import { SlicingResultComponent } from './slicing-result/slicing-result.component';
 
 export const privateRoutes: Routes = [
   {
@@ -24,6 +25,10 @@ export const privateRoutes: Routes = [
       {
         path: 'profile',
         component: ProfileComponent,
+      },
+      {
+        path: 'slicing-result',
+        component: SlicingResultComponent,
       },
     ],
   },

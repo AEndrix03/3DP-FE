@@ -10,9 +10,7 @@
   <div class="w-full flex flex-row justify-between">
     <div
       class="basis-1/2 w-full max-w-sm md:max-w-md lg:max-w-lg mx-auto aspect-square"
-    >
-      <printer-slicing-simulator />
-    </div>
+    ></div>
     <div
       class="basis-1/2 w-full max-w-sm md:max-w-md lg:max-w-lg mx-auto aspect-square"
     >
@@ -23,3 +21,5 @@
     <printer-slicing-result-tabs />
   </div>
 </main>
+
+<printer-gcode-simulator [commands]="gcodeCommands" />

@@ -22,7 +22,6 @@ import {
   transition,
   animate,
 } from '@angular/animations';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 // PrimeNG imports
 import { ButtonModule } from 'primeng/button';
@@ -252,6 +251,17 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   showBuildPlate = signal<boolean>(true);
   jumpTarget = signal<number>(0);
 
+  showBezierControls = signal<boolean>(false);
+  maxPathPoints = signal<number>(50000);
+  batchUpdateSize = signal<number>(100);
+  curveResolution = signal<number>(20);
+
+  // Performance tracking
+  private lastFrameTime = 0;
+  private frameCount = 0;
+  private fps = 0;
+  private fpsUpdateInterval = 1000;
+
   // Command history
   private _commandHistory = signal<CommandExecutionInfo[]>([]);
   readonly commandHistory = this._commandHistory.asReadonly();
@@ -323,6 +333,7 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   constructor(private simulatorService: GCodeSimulatorService) {
     this.setupEffects();
     this.checkMobile();
+    this.startFPSTracking();
   }
 
   ngOnInit() {
@@ -358,6 +369,49 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
       this.buildVolumeZ.set(this.buildVolumeZInput());
       this.showTravelMoves.set(this.showTravelMovesInput());
       this.showBuildPlate.set(this.showBuildPlateInput());
+    });
+
+    // Effect per sincronizzare velocità con il servizio
+    effect(() => {
+      const speed = this.animationSpeedValue();
+      this.simulatorService.setAnimationSpeed(speed);
+    });
+
+    // Nuovo effect per performance monitoring
+    effect(() => {
+      const pathCount = this.getTotalPathObjects();
+      const fps = this.getCurrentFPS();
+
+      // Warning se performance scadenti
+      if (pathCount > 10000 && fps < 30) {
+        console.warn(
+          'Performance warning: Consider reducing max path points or batch size'
+        );
+      }
+    });
+
+    // Effect per ottimizzazioni automatiche
+    effect(() => {
+      const totalCommands = this.printerState().totalCommands;
+      const currentFPS = this.getCurrentFPS();
+
+      // Auto-ottimizzazione se file molto grande
+      if (totalCommands > 50000 && this.maxPathPoints() > 30000) {
+        console.info(
+          'Large file detected, consider reducing max path points for better performance'
+        );
+      }
+
+      // Auto-riduzione qualità se FPS troppo basso
+      if (currentFPS < 20 && currentFPS > 0 && this.curveResolution() > 30) {
+        console.info('Low FPS detected, consider reducing curve resolution');
+      }
+    });
+
+    // Effect per aggiornamento velocità in tempo reale
+    effect(() => {
+      const speed = this.animationSpeedValue();
+      this.simulatorService.setAnimationSpeed(speed);
     });
 
     // Load commands
@@ -423,6 +477,27 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Avvia il tracking FPS
+   */
+  private startFPSTracking(): void {
+    const trackFPS = (timestamp: number) => {
+      this.frameCount++;
+
+      if (timestamp - this.lastFrameTime >= this.fpsUpdateInterval) {
+        this.fps = Math.round(
+          (this.frameCount * 1000) / (timestamp - this.lastFrameTime)
+        );
+        this.frameCount = 0;
+        this.lastFrameTime = timestamp;
+      }
+
+      requestAnimationFrame(trackFPS);
+    };
+
+    requestAnimationFrame(trackFPS);
+  }
+
   private initializeThreeJS() {
     const canvas = this.canvasRef.nativeElement;
     const container = canvas.parentElement!;
@@ -480,6 +555,78 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     const rimLight = new THREE.DirectionalLight(0x4488ff, 0.3);
     rimLight.position.set(-100, 50, -100);
     scene.add(rimLight);
+  }
+
+  /**
+   * Ottiene FPS corrente
+   */
+  getCurrentFPS(): number {
+    return this.fps;
+  }
+
+  /**
+   * Ottiene numero totale oggetti path
+   */
+  getTotalPathObjects(): number {
+    const pathSegments = this.simulatorService.pathSegments();
+    return pathSegments.length;
+  }
+
+  /**
+   * Controlla se ci sono comandi avanzati
+   */
+  hasAdvancedCommands(): boolean {
+    const commands = this.simulatorService.commands();
+    return commands.some(
+      (cmd) =>
+        cmd.command.includes('G2') ||
+        cmd.command.includes('G3') ||
+        cmd.command.includes('G5') ||
+        cmd.command.includes('G6')
+    );
+  }
+
+  /**
+   * Conta comandi di un tipo specifico
+   */
+  getCommandCount(commandType: string): number {
+    const commands = this.simulatorService.commands();
+    return commands.filter((cmd) => cmd.command === commandType).length;
+  }
+
+  /**
+   * Aggiorna visualizzazione punti controllo Bezier
+   */
+  updateShowBezierControls(event: any): void {
+    this.showBezierControls.set(event.checked);
+    this.simulatorService.setBezierControlsVisible(event.checked);
+  }
+
+  /**
+   * Aggiorna limite massimo punti path
+   */
+  updateMaxPathPoints(event: any): void {
+    const value = typeof event === 'number' ? event : event.value;
+    this.maxPathPoints.set(value);
+    this.simulatorService.setMaxPathPoints(value);
+  }
+
+  /**
+   * Aggiorna dimensione batch per aggiornamenti
+   */
+  updateBatchSize(event: any): void {
+    const value = typeof event === 'number' ? event : event.value;
+    this.batchUpdateSize.set(value);
+    this.simulatorService.setBatchSize(value);
+  }
+
+  /**
+   * Aggiorna risoluzione curve
+   */
+  updateCurveResolution(event: any): void {
+    const value = typeof event === 'number' ? event : event.value;
+    this.curveResolution.set(value);
+    this.simulatorService.setCurveResolution(value);
   }
 
   private resetCameraWithBetterView() {
@@ -555,8 +702,15 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   }
 
   reset() {
+    // Reset normale
     this.simulatorService.reset();
     this._commandHistory.set([]);
+
+    // Reset contatori performance
+    this.frameCount = 0;
+    this.fps = 0;
+
+    console.debug('Simulator reset with performance counters cleared');
   }
 
   stepBack(steps = 1) {
@@ -574,10 +728,46 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     }
   }
 
+  xportPerformanceStats(): void {
+    const stats = {
+      timestamp: new Date().toISOString(),
+      totalCommands: this.printerState().totalCommands,
+      pathObjects: this.getTotalPathObjects(),
+      currentFPS: this.getCurrentFPS(),
+      animationSpeed: this.animationSpeedValue(),
+      maxPathPoints: this.maxPathPoints(),
+      batchSize: this.batchUpdateSize(),
+      curveResolution: this.curveResolution(),
+      advancedCommands: {
+        arcs: this.getCommandCount('G2') + this.getCommandCount('G3'),
+        bezier: this.getCommandCount('G5') + this.getCommandCount('G5.1'),
+        nurbs: this.getCommandCount('G6'),
+      },
+    };
+
+    const blob = new Blob([JSON.stringify(stats, null, 2)], {
+      type: 'application/json',
+    });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gcode-performance-stats.json';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }
+
   // Settings Updates
   updateAnimationSpeed(event: any) {
-    this.animationSpeedValue.set(event.value);
-    // Here you could implement actual speed control in the service
+    const newSpeed = typeof event === 'number' ? event : event.value;
+    this.animationSpeedValue.set(newSpeed);
+
+    // Applica immediatamente al servizio
+    this.simulatorService.setAnimationSpeed(newSpeed);
+
+    // Feedback visivo opzionale
+    if (newSpeed > 10) {
+      console.debug(`High speed mode: ${newSpeed}x`);
+    }
   }
 
   updateFilamentColor(event: any) {
@@ -704,5 +894,30 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}m ${remainingSeconds.toFixed(0)}s`;
+  }
+
+  /**
+   * Metodo utility per diagnostica
+   */
+  getDiagnosticInfo(): any {
+    return {
+      simulation: {
+        state: this.simulationState(),
+        progress: this.printerState().printProgress,
+        currentCommand: this.printerState().currentCommandIndex,
+        totalCommands: this.printerState().totalCommands,
+      },
+      performance: {
+        fps: this.getCurrentFPS(),
+        pathObjects: this.getTotalPathObjects(),
+        maxPathPoints: this.maxPathPoints(),
+        batchSize: this.batchUpdateSize(),
+      },
+      settings: {
+        animationSpeed: this.animationSpeedValue(),
+        curveResolution: this.curveResolution(),
+        showBezierControls: this.showBezierControls(),
+      },
+    };
   }
 }

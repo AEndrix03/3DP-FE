@@ -1,9 +1,9 @@
 <div
-  class="simulator-container h-screen flex flex-col lg:flex-row bg-gradient-to-br from-slate-50 to-slate-100"
+  class="simulator-container h-screen flex flex-col lg:flex-row bg-gradient-to-br"
 >
   <!-- Mobile Header -->
   <div
-    class="lg:hidden bg-white shadow-lg p-4 flex items-center justify-between border-b"
+    class="lg:hidden shadow-lg p-4 flex items-center justify-between border-b"
   >
     <h1 class="text-xl font-bold text-gray-800">G-Code Simulator</h1>
     <div class="flex gap-2">
@@ -55,6 +55,24 @@
               [ngClass]="{ 'animate-bounce': simulationState() === 'running' }"
             />
           </div>
+
+          <div class="flex justify-between items-center">
+            <span class="text-gray-300">Objects:</span>
+            <span class="text-blue-400 font-bold">{{
+              getTotalPathObjects()
+            }}</span>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <span class="text-gray-300">FPS:</span>
+            <span
+              class="text-green-400 font-bold"
+              [ngClass]="{ 'text-red-400': getCurrentFPS() < 30 }"
+            >
+              {{ getCurrentFPS() }}
+            </span>
+          </div>
+
           <div class="flex justify-between items-center">
             <span class="text-gray-300">Layer:</span>
             <span class="text-white font-bold text-lg">
@@ -194,15 +212,9 @@
 
   <!-- Control Panel - Desktop -->
   <div
-    class="hidden lg:block control-panel w-96 bg-white/95 backdrop-blur-sm border-l border-gray-200/50 overflow-y-auto shadow-2xl"
+    class="hidden lg:block control-panel w-96 backdrop-blur-sm border-l border-gray-200/50 overflow-y-auto shadow-2xl"
   >
-    <div class="p-6 space-y-6">
-      <!-- Header -->
-      <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">G-Code Simulator</h2>
-        <p class="text-gray-600">Professional 3D Printing Simulator</p>
-      </div>
-
+    <div>
       <!-- Main Controls -->
       <p-panel
         header="Simulation Controls"
@@ -555,6 +567,101 @@
               size="small"
               [text]="true"
             />
+          </div>
+        </p-accordionTab>
+
+        <p-accordionTab header="Advanced G-Code Features">
+          <div class="space-y-4">
+            <!-- Supporto curve Bezier -->
+            <div
+              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+            >
+              <label
+                class="text-sm font-semibold text-gray-700"
+                for="showBezierControlsToggle"
+              >
+                Show Bezier Control Points
+              </label>
+              <p-toggleButton
+                [(ngModel)]="showBezierControls"
+                onIcon="pi pi-eye"
+                offIcon="pi pi-eye-slash"
+                (onChange)="updateShowBezierControls($event)"
+                size="small"
+                styleClass="modern-toggle"
+                id="showBezierControlsToggle"
+              />
+            </div>
+
+            <!-- Performance settings -->
+            <div>
+              <label
+                class="block text-sm font-semibold text-gray-700 mb-2"
+                for="maxPathPointsInput"
+              >
+                Max Path Points (Performance)
+              </label>
+              <p-inputNumber
+                [(ngModel)]="maxPathPoints"
+                [min]="1000"
+                [max]="100000"
+                [step]="1000"
+                (onInput)="updateMaxPathPoints($event)"
+                size="small"
+                styleClass="modern-input w-full"
+                id="maxPathPointsInput"
+              />
+              <small class="text-gray-500"
+                >Higher values = better quality, lower performance</small
+              >
+            </div>
+
+            <!-- Batch size for updates -->
+            <div>
+              <label
+                class="block text-sm font-semibold text-gray-700 mb-2"
+                for="batchSizeInput"
+              >
+                Batch Update Size
+              </label>
+              <p-inputNumber
+                [(ngModel)]="batchUpdateSize"
+                [min]="10"
+                [max]="1000"
+                [step]="10"
+                (onInput)="updateBatchSize($event)"
+                size="small"
+                styleClass="modern-input w-full"
+                id="batchSizeInput"
+              />
+              <small class="text-gray-500"
+                >Lower values = smoother updates, higher CPU usage</small
+              >
+            </div>
+
+            <!-- Curve resolution -->
+            <div>
+              <label
+                class="block text-sm font-semibold text-gray-700 mb-2"
+                for="curveResolutionInput"
+              >
+                Curve Resolution
+              </label>
+              <p-slider
+                [(ngModel)]="curveResolution"
+                [min]="5"
+                [max]="50"
+                [step]="1"
+                (onChange)="updateCurveResolution($event)"
+                styleClass="modern-slider"
+                id="curveResolutionInput"
+              />
+              <div class="flex justify-between text-xs text-gray-500 mt-1">
+                <span>5 (Fast)</span>
+                <span>{{ curveResolution }} segments</span>
+                <span>50 (Smooth)</span>
+              </div>
+            </div>
           </div>
         </p-accordionTab>
       </p-accordion>

@@ -1,11 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, input, InputSignal } from '@angular/core';
+import { TabsModule } from 'primeng/tabs';
+import { SlicingResultTabSimulatorComponent } from "./slicing-result-tab-simulator/slicing-result-tab-simulator.component";
 
 @Component({
   selector: 'printer-slicing-result-tabs',
-  imports: [],
+  imports: [TabsModule, SlicingResultTabSimulatorComponent],
   templateUrl: './slicing-result-tabs.component.html',
-  styleUrl: './slicing-result-tabs.component.css'
 })
 export class SlicingResultTabsComponent {
-
+  public readonly gcodeCommands: InputSignal<string[]> = input.required();
 }

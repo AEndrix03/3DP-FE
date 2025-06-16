@@ -25,4 +25,5 @@ export class ModelService {
   public saveModel(model: ModelSaveDto): Observable<string> {
     return this.http.patch<string>(`${UriCostants.modelsUrl}`, model);
   }
+  
 }

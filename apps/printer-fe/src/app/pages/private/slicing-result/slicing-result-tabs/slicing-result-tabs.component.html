@@ -2,12 +2,26 @@
   <p-tabs value="0">
     <p-tablist>
       <p-tab value="0" class="flex flex-row items-center gap-4">
+        <i class="pi pi-info"></i>
+        <span>Slicing Info</span>
+      </p-tab>
+      <p-tab value="1" class="flex flex-row items-center gap-4">
+        <i class="pi pi-objects-column"></i>
+        <span>Supported Materials</span>
+      </p-tab>
+      <p-tab value="2" class="flex flex-row items-center gap-4">
         <i class="pi pi-hammer"></i>
         <span>Simulator</span>
       </p-tab>
     </p-tablist>
     <p-tabpanels>
       <p-tabpanel value="0">
+        <printer-slicing-result-tab-simulator [commands]="gcodeCommands()" />
+      </p-tabpanel>
+      <p-tabpanel value="1">
+        <printer-slicing-result-tab-simulator [commands]="gcodeCommands()" />
+      </p-tabpanel>
+      <p-tabpanel value="2">
         <printer-slicing-result-tab-simulator [commands]="gcodeCommands()" />
       </p-tabpanel>
     </p-tabpanels>

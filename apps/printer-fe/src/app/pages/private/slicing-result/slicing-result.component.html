@@ -10,12 +10,16 @@
   <div class="w-full flex flex-row justify-between">
     <div
       class="basis-1/2 w-full max-w-sm md:max-w-md lg:max-w-lg mx-auto aspect-square"
-    ><printer-model-detail-preview *ngIf="sourceStlBlob() !== null" [blob]="sourceStlBlob()" />
-  </div>
+    >
+      <printer-model-detail-preview
+        *ngIf="sourceStlBlob() !== null"
+        [blob]="sourceStlBlob()"
+      />
+    </div>
     <div
       class="basis-1/2 w-full max-w-sm md:max-w-md lg:max-w-lg mx-auto aspect-square"
     >
-      <printer-slicing-result-info />
+      <printer-slicing-result-info [info]="slicingResult()" />
     </div>
   </div>
   <div class="w-full">

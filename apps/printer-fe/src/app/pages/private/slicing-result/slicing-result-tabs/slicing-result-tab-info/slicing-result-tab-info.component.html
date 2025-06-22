@@ -1,0 +1,376 @@
+<!-- slicing-result-tab-info.component.html -->
+<div class="flex flex-col gap-6">
+  <!-- Sezione Anagrafica -->
+  <article>
+    <p-card>
+      <ng-template pTemplate="header">
+        <div class="px-4 pt-4">
+          <h3 class="text-lg font-semibold">Informazioni Generali</h3>
+        </div>
+      </ng-template>
+
+      <div class="flex flex-col gap-3 p-4">
+        <p-iftalabel>
+          <input
+            pInputText
+            id="name"
+            autocomplete="off"
+            class="w-full"
+            [ngModel]="slicingProperty()?.name"
+            disabled
+          />
+          <label for="name">Nome</label>
+        </p-iftalabel>
+
+        <p-iftalabel>
+          <input
+            pInputText
+            id="description"
+            autocomplete="off"
+            class="w-full"
+            [ngModel]="slicingProperty()?.description"
+            disabled
+          />
+          <label for="description">Descrizione</label>
+        </p-iftalabel>
+
+        <div class="flex flex-row gap-3">
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="createdByUserId"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.createdByUserId"
+              disabled
+            />
+            <label for="createdByUserId">Creato da Utente</label>
+          </p-iftalabel>
+
+          <p-iftalabel class="w-32">
+            <input
+              pInputText
+              id="isPublic"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.isPublic"
+              disabled
+            />
+            <label for="isPublic">Pubblico</label>
+          </p-iftalabel>
+        </div>
+
+        <div class="flex flex-row gap-3">
+          <p-iftalabel class="flex-auto">
+            <p-datepicker
+              [ngModel]="slicingProperty()?.createdAt"
+              inputId="createdAt"
+              [showIcon]="false"
+              iconDisplay="input"
+              styleClass="w-full"
+              [disabled]="true"
+            />
+            <label for="createdAt">Data Creazione</label>
+          </p-iftalabel>
+
+          <p-iftalabel class="flex-auto">
+            <p-datepicker
+              [ngModel]="slicingProperty()?.updatedAt"
+              inputId="updatedAt"
+              [showIcon]="false"
+              iconDisplay="input"
+              styleClass="w-full"
+              [disabled]="true"
+            />
+            <label for="updatedAt">Data Aggiornamento</label>
+          </p-iftalabel>
+        </div>
+      </div>
+    </p-card>
+  </article>
+
+  <!-- Sezione Layer e Velocità -->
+  <article>
+    <p-card>
+      <ng-template pTemplate="header">
+        <div class="px-4 pt-4">
+          <h3 class="text-lg font-semibold">Configurazione Layer e Velocità</h3>
+        </div>
+      </ng-template>
+
+      <div class="flex flex-col gap-3 p-4">
+        <div class="flex flex-row gap-3">
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="layerHeightMm"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.layerHeightMm"
+              disabled
+            />
+            <label for="layerHeightMm">Altezza Layer (mm)</label>
+          </p-iftalabel>
+
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="firstLayerHeightMm"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.firstLayerHeightMm"
+              disabled
+            />
+            <label for="firstLayerHeightMm">Altezza Primo Layer (mm)</label>
+          </p-iftalabel>
+        </div>
+
+        <div class="flex flex-row gap-3">
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="printSpeedMmS"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.printSpeedMmS"
+              disabled
+            />
+            <label for="printSpeedMmS">Velocità Stampa (mm/s)</label>
+          </p-iftalabel>
+
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="travelSpeedMmS"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.travelSpeedMmS"
+              disabled
+            />
+            <label for="travelSpeedMmS">Velocità Movimento (mm/s)</label>
+          </p-iftalabel>
+
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="firstLayerSpeedMmS"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.firstLayerSpeedMmS"
+              disabled
+            />
+            <label for="firstLayerSpeedMmS">Velocità Primo Layer (mm/s)</label>
+          </p-iftalabel>
+        </div>
+      </div>
+    </p-card>
+  </article>
+
+  <!-- Sezione Riempimento e Perimetri -->
+  <article>
+    <p-card>
+      <ng-template pTemplate="header">
+        <div class="px-4 pt-4">
+          <h3 class="text-lg font-semibold">Riempimento e Struttura</h3>
+        </div>
+      </ng-template>
+
+      <div class="flex flex-col gap-3 p-4">
+        <div class="flex flex-row gap-3">
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="infillPercentage"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.infillPercentage"
+              disabled
+            />
+            <label for="infillPercentage">Percentuale Riempimento (%)</label>
+          </p-iftalabel>
+
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="infillPattern"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.infillPattern"
+              disabled
+            />
+            <label for="infillPattern">Pattern Riempimento</label>
+          </p-iftalabel>
+        </div>
+
+        <div class="flex flex-row gap-3">
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="perimeterCount"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.perimeterCount"
+              disabled
+            />
+            <label for="perimeterCount">Numero Perimetri</label>
+          </p-iftalabel>
+
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="topSolidLayers"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.topSolidLayers"
+              disabled
+            />
+            <label for="topSolidLayers">Layer Solidi Superiori</label>
+          </p-iftalabel>
+
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="bottomSolidLayers"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.bottomSolidLayers"
+              disabled
+            />
+            <label for="bottomSolidLayers">Layer Solidi Inferiori</label>
+          </p-iftalabel>
+        </div>
+      </div>
+    </p-card>
+  </article>
+
+  <!-- Sezione Supporti e Brim -->
+  <article>
+    <p-card>
+      <ng-template pTemplate="header">
+        <div class="px-4 pt-4">
+          <h3 class="text-lg font-semibold">Supporti e Adesione</h3>
+        </div>
+      </ng-template>
+
+      <div class="flex flex-col gap-3 p-4">
+        <div class="flex flex-row gap-3">
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="supportsEnabled"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.supportsEnabled"
+              disabled
+            />
+            <label for="supportsEnabled">Supporti Abilitati</label>
+          </p-iftalabel>
+
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="supportAngleThreshold"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.supportAngleThreshold"
+              disabled
+            />
+            <label for="supportAngleThreshold"
+              >Soglia Angolo Supporti (°)</label
+            >
+          </p-iftalabel>
+        </div>
+
+        <div class="flex flex-row gap-3">
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="brimEnabled"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.brimEnabled"
+              disabled
+            />
+            <label for="brimEnabled">Brim Abilitato</label>
+          </p-iftalabel>
+
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="brimWidthMm"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.brimWidthMm"
+              disabled
+            />
+            <label for="brimWidthMm">Larghezza Brim (mm)</label>
+          </p-iftalabel>
+        </div>
+      </div>
+    </p-card>
+  </article>
+
+  <!-- Sezione Temperature -->
+  <article>
+    <p-card>
+      <ng-template pTemplate="header">
+        <div class="px-4 pt-4">
+          <h3 class="text-lg font-semibold">Temperature</h3>
+        </div>
+      </ng-template>
+
+      <div class="flex flex-col gap-3 p-4">
+        <div class="flex flex-row gap-3">
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="extruderTempC"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.extruderTempC"
+              disabled
+            />
+            <label for="extruderTempC">Temperatura Estrusore (°C)</label>
+          </p-iftalabel>
+
+          <p-iftalabel class="flex-auto">
+            <input
+              pInputText
+              id="bedTempC"
+              autocomplete="off"
+              class="w-full"
+              [ngModel]="slicingProperty()?.bedTempC"
+              disabled
+            />
+            <label for="bedTempC">Temperatura Piatto (°C)</label>
+          </p-iftalabel>
+        </div>
+      </div>
+    </p-card>
+  </article>
+
+  <!-- Sezione Impostazioni Avanzate -->
+  <article>
+    <p-card>
+      <ng-template pTemplate="header">
+        <div class="px-4 pt-4">
+          <h3 class="text-lg font-semibold">Impostazioni Avanzate</h3>
+        </div>
+      </ng-template>
+
+      <div class="flex flex-col gap-3 p-4">
+        <p-iftalabel>
+          <textarea
+            pInputText
+            id="advancedSettings"
+            autocomplete="off"
+            class="w-full min-h-[100px] resize-y"
+            [ngModel]="slicingProperty()?.advancedSettings"
+            disabled
+          ></textarea>
+          <label for="advancedSettings">Configurazioni Avanzate</label>
+        </p-iftalabel>
+      </div>
+    </p-card>
+  </article>
+</div>

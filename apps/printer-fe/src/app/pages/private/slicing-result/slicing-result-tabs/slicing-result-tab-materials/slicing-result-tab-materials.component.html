@@ -1,0 +1,176 @@
+<!-- supported-materials-tab.component.html -->
+<div class="w-full">
+  <!-- Header con conteggio materiali -->
+  <div
+    class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200"
+  >
+    <h2 class="text-xl font-semibold text-gray-800 mb-2">
+      Materiali Supportati
+    </h2>
+    <p class="text-gray-600">
+      Sono disponibili
+      <span class="font-semibold text-blue-600">{{ materials()?.length }}</span>
+      {{ materials()?.length === 1 ? 'materiale' : 'materiali' }} per questo
+      profilo di slicing
+    </p>
+  </div>
+
+  <!-- DataView per la lista materiali -->
+  <p-dataview
+    [value]="materials()"
+    layout="list"
+    [paginator]="materials()?.length > 6"
+    [rows]="6"
+    [alwaysShowPaginator]="false"
+    class="materials-dataview"
+  >
+    <ng-template pTemplate="list" let-materials>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div
+          *ngFor="let material of materials; trackBy: trackById"
+          class="material-card bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all duration-300 hover:border-blue-300"
+        >
+          <div class="flex gap-4">
+            <!-- Immagine materiale -->
+            <div class="flex-shrink-0">
+              <div
+                class="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200"
+              >
+                <img
+                  [src]="getImageUrl(material.image)"
+                  [alt]="'Immagine di ' + material.name"
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                  onerror="this.src='/assets/placeholder-material.png'"
+                />
+              </div>
+            </div>
+
+            <!-- Contenuto principale -->
+            <div class="flex-grow min-w-0">
+              <!-- Header con nome e tipo -->
+              <div class="flex items-start justify-between mb-2">
+                <div class="min-w-0 flex-grow">
+                  <h3
+                    class="text-lg font-semibold text-gray-900 truncate"
+                    [title]="material.name"
+                  >
+                    {{ material.name }}
+                  </h3>
+                  <p class="text-sm text-gray-600 mt-1">{{ material.brand }}</p>
+                </div>
+                <p-tag
+                  [value]="material.type"
+                  [severity]="getTypeTagSeverity(material.type)"
+                  class="ml-2 flex-shrink-0"
+                >
+                </p-tag>
+              </div>
+
+              <!-- Informazioni tecniche -->
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <!-- Diametro -->
+                <div class="flex items-center gap-1">
+                  <i class="pi pi-circle text-gray-400 text-xs"></i>
+                  <span class="text-gray-600">Ø:</span>
+                  <span class="font-medium text-gray-800"
+                    >{{ material.diameterMm }} mm</span
+                  >
+                </div>
+
+                <!-- Densità -->
+                <div class="flex items-center gap-1">
+                  <i class="pi pi-box text-gray-400 text-xs"></i>
+                  <span class="text-gray-600">Densità:</span>
+                  <span class="font-medium text-gray-800"
+                    >{{ material.densityGCm3 }} g/cm³</span
+                  >
+                </div>
+
+                <!-- Temperatura estrusore -->
+                <div class="flex items-center gap-1 col-span-2">
+                  <i class="pi pi-sun text-orange-400 text-xs"></i>
+                  <span class="text-gray-600">T. Estrusore:</span>
+                  <span class="font-medium text-gray-800">
+                    {{
+                      formatTemperatureRange(
+                        material.recommendedExtruderTempMinC,
+                        material.recommendedExtruderTempMaxC
+                      )
+                    }}
+                  </span>
+                </div>
+
+                <!-- Temperatura piatto -->
+                <div class="flex items-center gap-1">
+                  <i class="pi pi-tablet text-blue-400 text-xs"></i>
+                  <span class="text-gray-600">T. Piatto:</span>
+                  <span class="font-medium text-gray-800"
+                    >{{ material.recommendedBedTempC }}°C</span
+                  >
+                </div>
+
+                <!-- Costo -->
+                <div class="flex items-center gap-1" *ngIf="material.costPerKg">
+                  <i class="pi pi-euro text-green-400 text-xs"></i>
+                  <span class="text-gray-600">Costo:</span>
+                  <span class="font-medium text-gray-800"
+                    >{{ material.costPerKg }}/kg</span
+                  >
+                </div>
+              </div>
+
+              <!-- Caratteristiche speciali -->
+              <div
+                class="flex flex-wrap gap-1 mt-3"
+                *ngIf="
+                  hasSpecialHeating(material) ||
+                  material.supportsSoluble === 'true'
+                "
+              >
+                <span
+                  *ngIf="material.requiresHeatedBed === 'true'"
+                  class="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full"
+                >
+                  <i class="pi pi-sun text-xs"></i>
+                  Piatto Riscaldato
+                </span>
+
+                <span
+                  *ngIf="material.requiresChamberHeating === 'true'"
+                  class="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full"
+                >
+                  <i class="pi pi-home text-xs"></i>
+                  Camera Riscaldata
+                </span>
+
+                <span
+                  *ngIf="material.supportsSoluble === 'true'"
+                  class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full"
+                >
+                  <i class="pi pi-droplet text-xs"></i>
+                  Solubile
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-template>
+
+    <!-- Template per stato vuoto -->
+    <ng-template pTemplate="empty">
+      <div class="text-center py-12">
+        <div class="mb-4">
+          <i class="pi pi-inbox text-6xl text-gray-300"></i>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">
+          Nessun materiale disponibile
+        </h3>
+        <p class="text-gray-500">
+          Non ci sono materiali associati a questo profilo di slicing.
+        </p>
+      </div>
+    </ng-template>
+  </p-dataview>
+</div>

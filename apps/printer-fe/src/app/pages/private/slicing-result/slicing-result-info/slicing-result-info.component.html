@@ -8,7 +8,8 @@
           autocomplete="off"
           class="w-full"
           max="64"
-          [formControl]="idFc"
+          [ngModel]="info()?.id"
+          [disabled]="true"
         />
         <label for="id">Id</label>
       </p-iftalabel>
@@ -19,7 +20,8 @@
           autocomplete="off"
           class="w-full"
           max="64"
-          [formControl]="sourceIdFc"
+          [ngModel]="info()?.sourceId"
+          [disabled]="true"
         />
         <label for="source">STL Source Id</label>
       </p-iftalabel>
@@ -31,7 +33,8 @@
             autocomplete="off"
             class="w-full"
             max="64"
-            [formControl]="generatedIdFc"
+            [ngModel]="info()?.generatedId"
+            [disabled]="true"
           />
           <label for="generated">GCode Generated Id</label>
         </p-iftalabel>
@@ -42,18 +45,20 @@
             autocomplete="off"
             class="w-full"
             max="64"
-            [formControl]="linesFc"
+            [ngModel]="info()?.lines"
+            [disabled]="true"
           />
           <label for="lines">GCode Lines</label>
         </p-iftalabel>
       </div>
       <p-iftalabel>
         <p-datepicker
-          [formControl]="createdAtFc"
+          [ngModel]="info()?.createdAt"
           inputId="createDate"
           [showIcon]="false"
           iconDisplay="input"
           styleClass="w-full"
+          [disabled]="true"
         />
         <label for="createDate">Created At</label>
       </p-iftalabel>

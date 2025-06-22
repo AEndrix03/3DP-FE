@@ -39,6 +39,9 @@ export class SlicingResultComponent {
     signal(null);
   protected readonly sourceStlBlob: WritableSignal<Blob> = signal(null);
 
+  protected readonly gcodeBlob: WritableSignal<Blob> = signal(null);
+  protected readonly gcodeCommands: WritableSignal<string[]> = signal([]);
+
   private readonly fromRoute: WritableSignal<string | null> = signal(null);
   private readonly fromRouteId: WritableSignal<string | null> = signal(null);
 
@@ -80,7 +83,36 @@ export class SlicingResultComponent {
           .downloadGlb(res.sourceId)
           .pipe(tap((res) => this.sourceStlBlob.set(res)))
           .subscribe();
+
+        this.fileService
+          .download(res.generatedId)
+          .pipe(tap((res) => this.gcodeBlob.set(res)))
+          .subscribe();
       }
+    });
+
+    effect(() => {
+      const blob = this.gcodeBlob();
+
+      if (!blob) {
+        this.gcodeCommands.set([]);
+        return;
+      }
+
+      blob
+        .text()
+        .then((text) => {
+          const commands = text
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+          this.gcodeCommands.set(commands);
+          console.log(commands);
+        })
+        .catch((error) => {
+          console.error('Errore lettura G-code:', error);
+          this.gcodeCommands.set([]);
+        });
     });
   }
 }

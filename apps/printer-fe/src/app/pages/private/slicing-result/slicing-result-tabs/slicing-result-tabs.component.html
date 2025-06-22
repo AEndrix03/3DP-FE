@@ -16,10 +16,10 @@
     </p-tablist>
     <p-tabpanels>
       <p-tabpanel value="0">
-        <printer-slicing-result-tab-simulator [commands]="gcodeCommands()" />
+        <printer-slicing-result-tab-info [slicingProperty]="info()" />
       </p-tabpanel>
       <p-tabpanel value="1">
-        <printer-slicing-result-tab-simulator [commands]="gcodeCommands()" />
+        <printer-slicing-result-tab-materials [materials]="materials()" />
       </p-tabpanel>
       <p-tabpanel value="2">
         <printer-slicing-result-tab-simulator [commands]="gcodeCommands()" />

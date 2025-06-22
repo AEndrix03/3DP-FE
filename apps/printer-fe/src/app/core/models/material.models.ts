@@ -15,4 +15,5 @@ export interface MaterialDto {
   shrinkageFactor: string;
   createdAt: Date;
   updatedAt: Date;
+  image: string;
 }

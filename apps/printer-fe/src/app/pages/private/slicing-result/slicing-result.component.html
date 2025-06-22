@@ -23,6 +23,10 @@
     </div>
   </div>
   <div class="w-full">
-    <printer-slicing-result-tabs [gcodeCommands]="[]" />
+    <printer-slicing-result-tabs
+      [gcodeCommands]="gcodeCommands()"
+      [info]="slicingResult()?.slicingProperty"
+      [materials]="slicingResult()?.materials"
+    />
   </div>
 </main>

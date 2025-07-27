@@ -12,8 +12,8 @@ import { SlicingResultInfoComponent } from './slicing-result-info/slicing-result
 import { SlicingResultTabsComponent } from './slicing-result-tabs/slicing-result-tabs.component';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ModelDetailPreviewComponent } from '../jobs/model-detail/model-detail-preview/model-detail-preview.component';
-import { SlicingResultDto } from '../../../core/models/slicing.models';
-import { SlicingService } from '../../../services/slicing.service';
+import { SlicingResultDto } from '../../../core/models/slicing/slicing.models';
+import { SlicingService } from '../../../services/slicing/slicing.service';
 import { FileService } from '../../../services/file.service';
 import { map, switchMap, take, tap } from 'rxjs';
 

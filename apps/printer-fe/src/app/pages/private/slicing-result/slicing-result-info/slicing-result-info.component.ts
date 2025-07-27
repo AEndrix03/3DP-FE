@@ -1,6 +1,6 @@
 import { Component, input, InputSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { SlicingResultDto } from 'apps/printer-fe/src/app/core/models/slicing.models';
+import { SlicingResultDto } from '../../../../core/models/slicing/slicing.models';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { DatePickerModule } from 'primeng/datepicker';

@@ -1,8 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { SlicingResultDto } from '../core/models/slicing.models';
+import { SlicingResultDto } from '../../core/models/slicing/slicing.models';
 import { Observable } from 'rxjs';
-import { UriCostants } from '../core/costants/uri-costants';
+import { UriCostants } from '../../core/costants/uri-costants';
 
 @Injectable({
   providedIn: 'root',

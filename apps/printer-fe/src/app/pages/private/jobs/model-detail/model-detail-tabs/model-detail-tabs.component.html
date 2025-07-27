@@ -9,7 +9,9 @@
     <p-tabpanels>
       <p-tabpanel value="0">
         <printer-model-detail-tab-slicing
+          [results]="slicingResults()"
           (openDetail)="openSlicingResultDetail($event)"
+          (startSlicing)="openSlicingStarter()"
         />
       </p-tabpanel>
     </p-tabpanels>

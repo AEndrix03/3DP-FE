@@ -1,0 +1,18 @@
+<div class="slicing-starter">
+  <div class="flex flex-row justify-end items-center">
+    <p-button
+      icon="pi pi-plus-circle"
+      label="Create Profile"
+      severity="secondary"
+      (onClick)="createProfile()"
+    />
+  </div>
+  <div class="flex flex-col gap-2 py-4">
+    <div *ngFor="let profile of profiles()">
+      <printer-slicing-profile
+        [profile]="profile"
+        (show)="openProfile($event)"
+      />
+    </div>
+  </div>
+</div>

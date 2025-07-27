@@ -17,3 +17,14 @@ export interface MaterialDto {
   updatedAt: Date;
   image: string;
 }
+
+export type MaterialCreateDto = Omit<
+  MaterialDto,
+  'id' | 'createdAt' | 'updatedAt'
+>;
+
+export type MaterialUpdateDto = Partial<
+  Omit<MaterialDto, 'id' | 'createdAt' | 'updatedAt'>
+> & {
+  id: string;
+};

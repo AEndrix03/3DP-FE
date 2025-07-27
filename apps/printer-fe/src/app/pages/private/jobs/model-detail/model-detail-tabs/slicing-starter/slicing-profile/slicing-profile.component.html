@@ -1,0 +1,22 @@
+<p-card [style]="{ background: '#333', padding: '12px 16px' }">
+  <ng-template #header
+  ><span class="font-bold">{{ profile().name }}</span></ng-template
+  >
+  <div class="flex flex-row justify-between items-center">
+    <p>{{ profile().description }}</p>
+    <div class="flex flex-row gap-4">
+      <p-button
+        icon="pi pi-eye"
+        variant="text"
+        severity="secondary"
+        pTooltip="More info"
+        tooltipPosition="bottom"
+        size="small"
+        (onClick)="show.emit(profile().id)"
+      />
+    </div>
+  </div>
+  <ng-template #footer
+  ><span class="italic text-sm">Created At: {{ profile().createdAt | date }}</span></ng-template
+  >
+</p-card>

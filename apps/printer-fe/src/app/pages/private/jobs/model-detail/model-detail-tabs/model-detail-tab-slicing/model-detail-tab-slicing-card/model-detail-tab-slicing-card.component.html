@@ -1,9 +1,9 @@
 <p-card [style]="{ background: '#333', padding: '12px 16px' }">
   <ng-template #header
-    ><span class="font-bold">Slice Alta Qualità</span></ng-template
+  ><span class="font-bold">{{ result().slicingProperty.name }}</span></ng-template
   >
   <div class="flex flex-row justify-between items-center">
-    <p>Layer: 0.2mm•Infill: 20%•Tempo: 2h 15m•Filamento: 15.2g</p>
+    <p>{{ result().slicingProperty.description }}</p>
     <div class="flex flex-row gap-4">
       <p-button
         icon="pi pi-eye"
@@ -12,7 +12,7 @@
         pTooltip="More info"
         tooltipPosition="bottom"
         size="small"
-        (onClick)="openDetail.emit('4be4d71a-48f5-49f4-9812-4192c22de872')"
+        (onClick)="openDetail.emit(result().id)"
       />
       <p-button
         icon="pi pi-play"
@@ -41,6 +41,6 @@
     </div>
   </div>
   <ng-template #footer
-    ><span class="italic text-sm">Created At: 06/06/2006</span></ng-template
+  ><span class="italic text-sm">Created At: {{ result().createdAt | date }}</span></ng-template
   >
 </p-card>

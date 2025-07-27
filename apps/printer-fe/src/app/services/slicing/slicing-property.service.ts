@@ -20,4 +20,11 @@ export class SlicingPropertyService {
       }
     );
   }
+
+  public saveSlicingProfile(profile: SlicingPropertyDto): Observable<string> {
+    return this.http.patch<string>(
+      `${UriCostants.slicingPropertyUrl}`,
+      profile
+    );
+  }
 }

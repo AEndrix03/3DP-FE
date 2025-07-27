@@ -18,8 +18,10 @@ import { SlicingResultDto } from '../../../../../core/models/slicing/slicing.mod
 import { SlicingPropertyDto } from '../../../../../core/models/slicing/slicing-property.models';
 import { SlicingPropertyService } from '../../../../../services/slicing/slicing-property.service';
 import { SlicingService } from '../../../../../services/slicing/slicing.service';
-import { tap } from 'rxjs';
+import { filter, map, switchMap, tap } from 'rxjs';
 import { userStore } from '@3-dp-fe/praetor-auth-kit';
+import { SlicingQueueService } from '../../../../../services/slicing/slicing-queue.service';
+import { SlicingQueueCreateDto } from '../../../../../core/models/slicing/slicing-queue.models';
 
 @Component({
   selector: 'printer-model-detail-tabs',
@@ -43,7 +45,8 @@ export class ModelDetailTabsComponent {
     private readonly router: Router,
     private readonly dialogService: DialogService,
     private readonly slicingService: SlicingService,
-    private readonly slicingPropertyService: SlicingPropertyService
+    private readonly slicingPropertyService: SlicingPropertyService,
+    private readonly slicingQueueService: SlicingQueueService
   ) {
     effect(() =>
       this.slicingService
@@ -78,5 +81,19 @@ export class ModelDetailTabsComponent {
         profiles: this.slicingProfiles(),
       },
     });
+
+    this.ref.onClose
+      .pipe(
+        filter((res) => res !== null),
+        map((slicingPropertyId: string) => ({
+          modelId: this.model().id,
+          slicingPropertyId,
+          userId: this.userStore.user().id,
+        })),
+        switchMap((request: SlicingQueueCreateDto) =>
+          this.slicingQueueService.enqueueSlicing(request)
+        )
+      )
+      .subscribe();
   }
 }

@@ -1,0 +1,772 @@
+<div class="w-full">
+  <form [formGroup]="profileForm" class="space-y-6">
+
+    <p-card class="shadow-sm">
+      <ng-template pTemplate="header">
+        <div class="p-4 border-b border-gray-200">
+          <h2 class="text-xl font-semibold">
+            {{ isNew() ? 'New Slicing Profile' : 'Edit Slicing Profile' }}
+          </h2>
+        </div>
+      </ng-template>
+
+      <div class="p-4 space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-2">
+            <label for="name" class="block text-sm font-medium text-gray-700">Name *</label>
+            <input
+              id="name"
+              type="text"
+              pInputText
+              formControlName="name"
+              placeholder="Enter profile name"
+              class="w-full"
+              [class.ng-invalid]="getFieldError('name')"
+            />
+            <small class="text-red-500" *ngIf="getFieldError('name')">
+              {{ getFieldError('name') }}
+            </small>
+          </div>
+
+          <div class="space-y-2">
+            <label for="qualityProfile" class="block text-sm font-medium text-gray-700">Quality Profile</label>
+            <p-dropdown
+              id="qualityProfile"
+              formControlName="qualityProfile"
+              [options]="qualityProfiles"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select quality"
+              class="w-full"
+            />
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+          <textarea
+            id="description"
+            pTextarea
+            formControlName="description"
+            placeholder="Enter profile description"
+            rows="2"
+            class="w-full"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="space-y-2">
+            <label for="layerHeight" class="block text-sm font-medium text-gray-700">Layer Height (mm) *</label>
+            <p-inputNumber
+              id="layerHeight"
+              formControlName="layerHeightMm"
+              mode="decimal"
+              [minFractionDigits]="3"
+              [maxFractionDigits]="3"
+              [min]="0.001"
+              [max]="2.0"
+              [step]="0.05"
+              suffix=" mm"
+              class="w-full"
+              [class.ng-invalid]="getFieldError('layerHeightMm')"
+            />
+            <small class="text-red-500" *ngIf="getFieldError('layerHeightMm')">
+              {{ getFieldError('layerHeightMm') }}
+            </small>
+          </div>
+
+          <div class="space-y-2">
+            <label for="printSpeed" class="block text-sm font-medium text-gray-700">Print Speed (mm/s) *</label>
+            <p-inputNumber
+              id="printSpeed"
+              formControlName="printSpeedMmS"
+              [min]="0.1"
+              [max]="1000"
+              [step]="5"
+              suffix=" mm/s"
+              class="w-full"
+              [class.ng-invalid]="getFieldError('printSpeedMmS')"
+            />
+            <small class="text-red-500" *ngIf="getFieldError('printSpeedMmS')">
+              {{ getFieldError('printSpeedMmS') }}
+            </small>
+          </div>
+
+          <div class="space-y-2">
+            <label for="infillPercentage" class="block text-sm font-medium text-gray-700">Infill % *</label>
+            <p-inputNumber
+              id="infillPercentage"
+              formControlName="infillPercentage"
+              [min]="0"
+              [max]="100"
+              [step]="5"
+              suffix="%"
+              class="w-full"
+              [class.ng-invalid]="getFieldError('infillPercentage')"
+            />
+            <small class="text-red-500" *ngIf="getFieldError('infillPercentage')">
+              {{ getFieldError('infillPercentage') }}
+            </small>
+          </div>
+
+          <div class="space-y-2">
+            <label for="supportsEnabled" class="block text-sm font-medium text-gray-700">Supports</label>
+            <p-toggleButton
+              id="supportsEnabled"
+              formControlName="supportsEnabled"
+              onLabel="Enabled"
+              offLabel="Disabled"
+              onIcon="pi pi-check"
+              offIcon="pi pi-times"
+              class="w-full"
+            />
+          </div>
+        </div>
+      </div>
+    </p-card>
+
+    <p-tabView class="shadow-sm w-full">
+
+      <p-tabPanel header="Layer & Speed">
+        <div class="p-4 space-y-4">
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Layer Settings</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">First Layer Height (mm)</label>
+              <p-inputNumber
+                formControlName="firstLayerHeightMm"
+                mode="decimal"
+                [minFractionDigits]="3"
+                [maxFractionDigits]="3"
+                [min]="0.001"
+                [max]="2.0"
+                [step]="0.05"
+                suffix=" mm"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Line Width (mm)</label>
+              <p-inputNumber
+                formControlName="lineWidthMm"
+                mode="decimal"
+                [minFractionDigits]="3"
+                [maxFractionDigits]="3"
+                [min]="0.001"
+                [max]="5.0"
+                [step]="0.05"
+                suffix=" mm"
+                class="w-full"
+              />
+            </div>
+          </div>
+
+          <p-divider />
+
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Speed Settings</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">First Layer Speed (mm/s)</label>
+              <p-inputNumber
+                formControlName="firstLayerSpeedMmS"
+                [min]="0.1"
+                [max]="1000"
+                [step]="5"
+                suffix=" mm/s"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Travel Speed (mm/s)</label>
+              <p-inputNumber
+                formControlName="travelSpeedMmS"
+                [min]="0.1"
+                [max]="1000"
+                [step]="10"
+                suffix=" mm/s"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Infill Speed (mm/s)</label>
+              <p-inputNumber
+                formControlName="infillSpeedMmS"
+                [min]="0.1"
+                [max]="1000"
+                [step]="5"
+                suffix=" mm/s"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Outer Wall Speed (mm/s)</label>
+              <p-inputNumber
+                formControlName="outerWallSpeedMmS"
+                [min]="0.1"
+                [max]="1000"
+                [step]="5"
+                suffix=" mm/s"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Inner Wall Speed (mm/s)</label>
+              <p-inputNumber
+                formControlName="innerWallSpeedMmS"
+                [min]="0.1"
+                [max]="1000"
+                [step]="5"
+                suffix=" mm/s"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Top/Bottom Speed (mm/s)</label>
+              <p-inputNumber
+                formControlName="topBottomSpeedMmS"
+                [min]="0.1"
+                [max]="1000"
+                [step]="5"
+                suffix=" mm/s"
+                class="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </p-tabPanel>
+
+      <p-tabPanel header="Infill & Shell">
+        <div class="p-4 space-y-4">
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Infill Settings</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Infill Pattern *</label>
+              <p-dropdown
+                formControlName="infillPattern"
+                [options]="infillPatterns"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select pattern"
+                class="w-full"
+              />
+            </div>
+          </div>
+
+          <p-divider />
+
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Shell Settings</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Perimeter Count</label>
+              <p-inputNumber
+                formControlName="perimeterCount"
+                [min]="0"
+                [max]="10"
+                [step]="1"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Top Solid Layers</label>
+              <p-inputNumber
+                formControlName="topSolidLayers"
+                [min]="0"
+                [max]="20"
+                [step]="1"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Bottom Solid Layers</label>
+              <p-inputNumber
+                formControlName="bottomSolidLayers"
+                [min]="0"
+                [max]="20"
+                [step]="1"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Top/Bottom Thickness (mm)</label>
+              <p-inputNumber
+                formControlName="topBottomThicknessMm"
+                mode="decimal"
+                [minFractionDigits]="2"
+                [maxFractionDigits]="3"
+                [min]="0"
+                [max]="10"
+                [step]="0.1"
+                suffix=" mm"
+                class="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </p-tabPanel>
+
+      <p-tabPanel header="Support & Adhesion">
+        <div class="p-4 space-y-4">
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Support Settings</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Support Angle Threshold (°)</label>
+              <p-inputNumber
+                formControlName="supportAngleThreshold"
+                [min]="0"
+                [max]="90"
+                [step]="5"
+                suffix="°"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Support Density (%)</label>
+              <p-inputNumber
+                formControlName="supportDensityPercentage"
+                [min]="0"
+                [max]="100"
+                [step]="5"
+                suffix="%"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Support Pattern</label>
+              <p-dropdown
+                formControlName="supportPattern"
+                [options]="supportPatterns"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select pattern"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Support Z Distance (mm)</label>
+              <p-inputNumber
+                formControlName="supportZDistanceMm"
+                mode="decimal"
+                [minFractionDigits]="2"
+                [maxFractionDigits]="3"
+                [min]="0"
+                [max]="5"
+                [step]="0.1"
+                suffix=" mm"
+                class="w-full"
+              />
+            </div>
+          </div>
+
+          <p-divider />
+
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Adhesion Settings</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Adhesion Type</label>
+              <p-dropdown
+                formControlName="adhesionType"
+                [options]="adhesionTypes"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select type"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Brim Enabled</label>
+              <p-toggleButton
+                formControlName="brimEnabled"
+                onLabel="Yes"
+                offLabel="No"
+                onIcon="pi pi-check"
+                offIcon="pi pi-times"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Brim Width (mm)</label>
+              <p-inputNumber
+                formControlName="brimWidthMm"
+                mode="decimal"
+                [minFractionDigits]="1"
+                [maxFractionDigits]="2"
+                [min]="0"
+                [max]="100"
+                [step]="1"
+                suffix=" mm"
+                class="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </p-tabPanel>
+
+      <p-tabPanel header="Cooling & Retraction">
+        <div class="p-4 space-y-4">
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Cooling Settings</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Fan Enabled</label>
+              <p-toggleButton
+                formControlName="fanEnabled"
+                onLabel="Enabled"
+                offLabel="Disabled"
+                onIcon="pi pi-check"
+                offIcon="pi pi-times"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Fan Speed (%)</label>
+              <p-inputNumber
+                formControlName="fanSpeedPercentage"
+                [min]="0"
+                [max]="100"
+                [step]="5"
+                suffix="%"
+                class="w-full"
+              />
+            </div>
+          </div>
+
+          <p-divider />
+
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Retraction Settings</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Retraction Enabled</label>
+              <p-toggleButton
+                formControlName="retractionEnabled"
+                onLabel="Enabled"
+                offLabel="Disabled"
+                onIcon="pi pi-check"
+                offIcon="pi pi-times"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Retraction Distance (mm)</label>
+              <p-inputNumber
+                formControlName="retractionDistanceMm"
+                mode="decimal"
+                [minFractionDigits]="1"
+                [maxFractionDigits]="2"
+                [min]="0"
+                [max]="10"
+                [step]="0.1"
+                suffix=" mm"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Z-Hop Enabled</label>
+              <p-toggleButton
+                formControlName="zhopEnabled"
+                onLabel="Enabled"
+                offLabel="Disabled"
+                onIcon="pi pi-check"
+                offIcon="pi pi-times"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Z-Hop Height (mm)</label>
+              <p-inputNumber
+                formControlName="zhopHeightMm"
+                mode="decimal"
+                [minFractionDigits]="1"
+                [maxFractionDigits]="2"
+                [min]="0"
+                [max]="5"
+                [step]="0.1"
+                suffix=" mm"
+                class="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </p-tabPanel>
+
+      <p-tabPanel header="Temperature">
+        <div class="p-4 space-y-4">
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Temperature Settings</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Extruder Temperature (°C)</label>
+              <p-inputNumber
+                formControlName="extruderTempC"
+                [min]="150"
+                [max]="350"
+                [step]="5"
+                suffix="°C"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Bed Temperature (°C)</label>
+              <p-inputNumber
+                formControlName="bedTempC"
+                [min]="0"
+                [max]="150"
+                [step]="5"
+                suffix="°C"
+                class="w-full"
+              />
+            </div>
+          </div>
+
+          <p-divider />
+
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Advanced Settings</h3>
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-gray-700">Advanced Configuration (JSON)</label>
+            <textarea
+              pTextarea
+              formControlName="advancedSettings"
+              placeholder='{"example": "value"}'
+              rows="4"
+              class="w-full font-mono text-sm"
+            ></textarea>
+          </div>
+        </div>
+      </p-tabPanel>
+
+      <p-tabPanel header="Settings">
+        <div class="p-4 space-y-4">
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Profile Settings</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Public Profile</label>
+              <p-toggleButton
+                formControlName="isPublic"
+                onLabel="Public"
+                offLabel="Private"
+                onIcon="pi pi-globe"
+                offIcon="pi pi-lock"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700">Active</label>
+              <p-toggleButton
+                formControlName="isActive"
+                onLabel="Active"
+                offLabel="Inactive"
+                onIcon="pi pi-check"
+                offIcon="pi pi-times"
+                class="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </p-tabPanel>
+
+      <p-tabPanel header="Materials">
+        <div class="p-4 space-y-4">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h3 class="text-lg font-medium text-gray-800 mb-1">Compatible Materials</h3>
+              <p class="text-sm text-gray-600">Select the materials that work well with this slicing profile
+                (optional)</p>
+            </div>
+
+            <!-- Search and Filter Controls -->
+            <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <span class="p-input-icon-left">
+                <input
+                  type="text"
+                  pInputText
+                  [(ngModel)]="materialSearchTerm"
+                  [ngModelOptions]="{standalone: true}"
+                  placeholder="Search materials..."
+                  class="w-full sm:w-64"
+                />
+              </span>
+              <p-dropdown
+                [(ngModel)]="selectedMaterialType"
+                [ngModelOptions]="{standalone: true}"
+                [options]="materialTypeOptions()"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="All Types"
+                [showClear]="true"
+                class="w-full sm:w-40"
+              />
+            </div>
+          </div>
+
+          <!-- Selected Materials Count -->
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4" *ngIf="selectedMaterialsCount() > 0">
+            <div class="flex items-center">
+              <i class="pi pi-check-circle text-blue-600 mr-2"></i>
+              <span class="text-blue-800 font-medium">{{ selectedMaterialsCount() }} material(s) selected</span>
+              <p-button
+                label="Clear All"
+                icon="pi pi-times"
+                size="small"
+                severity="secondary"
+                [text]="true"
+                class="ml-auto"
+                (onClick)="clearAllMaterials()"
+              />
+            </div>
+          </div>
+
+          <!-- Materials Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div
+              *ngFor="let material of filteredMaterials(); trackBy: trackByMaterialId"
+              class="material-card relative border rounded-lg overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-md"
+              [class.selected]="isMaterialSelected(material.id)"
+              [class.border-blue-500]="isMaterialSelected(material.id)"
+              [class.border-gray-200]="!isMaterialSelected(material.id)"
+              [class.bg-blue-50]="isMaterialSelected(material.id)"
+              [class.bg-white]="!isMaterialSelected(material.id)"
+              (click)="toggleMaterial(material.id)"
+            >
+              <!-- Selection Indicator -->
+              <div
+                class="absolute top-2 right-2 z-10 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200"
+                [class.bg-blue-500]="isMaterialSelected(material.id)"
+                [class.border-blue-500]="isMaterialSelected(material.id)"
+                [class.bg-white]="!isMaterialSelected(material.id)"
+                [class.border-gray-300]="!isMaterialSelected(material.id)"
+              >
+                <i
+                  class="pi pi-check text-white text-xs"
+                  *ngIf="isMaterialSelected(material.id)"
+                ></i>
+              </div>
+
+              <!-- Material Image -->
+              <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
+                <img
+                  *ngIf="material.image && material.image !== ''; else defaultImage"
+                  [src]="material.image"
+                  [alt]="material.name"
+                  class="w-full h-full object-cover"
+                  (error)="onImageError($event)"
+                />
+                <ng-template #defaultImage>
+                  <div class="flex flex-col items-center justify-center text-gray-400">
+                    <i class="pi pi-image text-3xl mb-1"></i>
+                    <span class="text-xs">No Image</span>
+                  </div>
+                </ng-template>
+              </div>
+
+              <!-- Material Info -->
+              <div class="p-3">
+                <div class="flex items-start justify-between mb-2">
+                  <h4 class="font-medium text-gray-900 text-sm leading-tight">{{ material.name }}</h4>
+                </div>
+
+                <!-- Material Type Badge -->
+                <div class="flex items-center gap-2 mb-2">
+                  <span
+                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                    [class]="getMaterialTypeBadgeClass(material.type)"
+                  >
+                    {{ material.type }}
+                  </span>
+                </div>
+
+                <!-- Brand -->
+                <p class="text-xs text-gray-600 mb-2">
+                  <i class="pi pi-building mr-1"></i>
+                  {{ material.brand }}
+                </p>
+
+                <!-- Temperature Info -->
+                <div class="flex items-center justify-between text-xs text-gray-500">
+                  <span title="Extruder Temperature">
+                    <i class="pi pi-sun mr-1"></i>
+                    {{ material.recommendedExtruderTempMinC }}°-{{ material.recommendedExtruderTempMaxC }}°C
+                  </span>
+                  <span title="Bed Temperature" *ngIf="material.recommendedBedTempC > 0">
+                    <i class="pi pi-tablet mr-1"></i>
+                    {{ material.recommendedBedTempC }}°C
+                  </span>
+                </div>
+
+                <!-- Material Properties -->
+                <div class="flex items-center gap-1 mt-2">
+                  <span
+                    *ngIf="material.requiresHeatedBed === 'true'"
+                    class="inline-flex items-center justify-center w-5 h-5 bg-orange-100 text-orange-600 rounded-full text-xs"
+                    title="Requires Heated Bed"
+                  >
+                    <i class="pi pi-sun text-xs"></i>
+                  </span>
+                  <span
+                    *ngIf="material.supportsSoluble === 'true'"
+                    class="inline-flex items-center justify-center w-5 h-5 bg-blue-100 text-blue-600 rounded-full text-xs"
+                    title="Soluble Support"
+                  >
+                    <i class="pi pi-droplet text-xs"></i>
+                  </span>
+                  <span
+                    *ngIf="material.requiresChamberHeating === 'true'"
+                    class="inline-flex items-center justify-center w-5 h-5 bg-red-100 text-red-600 rounded-full text-xs"
+                    title="Requires Chamber Heating"
+                  >
+                    <i class="pi pi-home text-xs"></i>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div
+            *ngIf="filteredMaterials().length === 0"
+            class="text-center py-12 text-gray-500"
+          >
+            <i class="pi pi-inbox text-4xl mb-4 text-gray-300"></i>
+            <p class="text-lg font-medium mb-2">No materials found</p>
+            <p class="text-sm">Try adjusting your search criteria</p>
+          </div>
+        </div>
+      </p-tabPanel>
+
+    </p-tabView>
+
+    <div class="flex justify-end gap-3 pt-4 border-t border-gray-200" *ngIf="isNew()">
+      <p-button
+        label="Cancel"
+        icon="pi pi-times"
+        severity="secondary"
+        (onClick)="onCancelClick()"
+        styleClass="p-button-text"
+      />
+      <p-button
+        label="Save Profile"
+        icon="pi pi-check"
+        (onClick)="onSaveClick()"
+        [disabled]="!isFormValid"
+        styleClass="p-button-raised"
+      />
+    </div>
+
+  </form>
+</div>

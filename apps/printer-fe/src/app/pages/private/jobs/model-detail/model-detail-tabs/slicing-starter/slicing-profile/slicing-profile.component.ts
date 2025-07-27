@@ -19,5 +19,6 @@ import { SlicingPropertyDto } from '../../../../../../../core/models/slicing/sli
 export class SlicingProfileComponent {
   public readonly profile: InputSignal<SlicingPropertyDto> = input.required();
 
-  @Output() show = new EventEmitter();
+  @Output() show = new EventEmitter<SlicingPropertyDto>();
+  @Output() startSlicing = new EventEmitter<string>();
 }

@@ -12,7 +12,16 @@
         pTooltip="More info"
         tooltipPosition="bottom"
         size="small"
-        (onClick)="show.emit(profile().id)"
+        (onClick)="show.emit(profile())"
+      />
+      <p-button
+        icon="pi pi-play"
+        variant="text"
+        severity="secondary"
+        pTooltip="Start Slicing"
+        tooltipPosition="bottom"
+        size="small"
+        (onClick)="startSlicing.emit(profile().id)"
       />
     </div>
   </div>

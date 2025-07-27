@@ -59,8 +59,8 @@
           <div class="flex justify-between items-center">
             <span class="text-gray-300">Objects:</span>
             <span class="text-blue-400 font-bold">{{
-              getTotalPathObjects()
-            }}</span>
+                getTotalPathObjects()
+              }}</span>
           </div>
 
           <div class="flex justify-between items-center">
@@ -113,19 +113,19 @@
         <div class="grid grid-cols-2 gap-x-4 gap-y-2">
           <span class="text-gray-300">X:</span>
           <span class="text-white font-bold"
-            >{{ printerState().position.x.toFixed(2) }}mm</span
+          >{{ printerState().position.x.toFixed(2) }}mm</span
           >
           <span class="text-gray-300">Y:</span>
           <span class="text-white font-bold"
-            >{{ printerState().position.y.toFixed(2) }}mm</span
+          >{{ printerState().position.y.toFixed(2) }}mm</span
           >
           <span class="text-gray-300">Z:</span>
           <span class="text-white font-bold"
-            >{{ printerState().position.z.toFixed(2) }}mm</span
+          >{{ printerState().position.z.toFixed(2) }}mm</span
           >
           <span class="text-gray-300">Feed:</span>
           <span class="text-white font-bold"
-            >{{ printerState().feedRate }}mm/min</span
+          >{{ printerState().feedRate }}mm/min</span
           >
         </div>
       </div>
@@ -147,15 +147,15 @@
           />
           <span class="text-gray-300">E-Pos:</span>
           <span class="text-white font-bold"
-            >{{ printerState().extruderPosition.toFixed(2) }}mm</span
+          >{{ printerState().extruderPosition.toFixed(2) }}mm</span
           >
           <span class="text-gray-300">Temp:</span>
           <span class="text-orange-400 font-bold"
-            >{{ printerState().temperature }}°C</span
+          >{{ printerState().temperature }}°C</span
           >
           <span class="text-gray-300">Bed:</span>
           <span class="text-blue-400 font-bold"
-            >{{ printerState().bedTemperature }}°C</span
+          >{{ printerState().bedTemperature }}°C</span
           >
         </div>
       </div>
@@ -171,12 +171,12 @@
         <div class="grid grid-cols-2 gap-x-4 gap-y-2">
           <span class="text-gray-300">Elapsed:</span>
           <span class="text-white font-bold">{{
-            formatTime(printerState().executionTime)
-          }}</span>
+              formatTime(printerState().executionTime)
+            }}</span>
           <span class="text-gray-300">Remaining:</span>
           <span class="text-white font-bold">{{
-            formatTime(printerState().estimatedTimeRemaining)
-          }}</span>
+              formatTime(printerState().estimatedTimeRemaining)
+            }}</span>
         </div>
       </div>
     </div>
@@ -317,7 +317,7 @@
             <label
               class="block text-sm font-semibold text-gray-700"
               for="jumpTargetInput"
-              >Jump to Command</label
+            >Jump to Command</label
             >
             <div class="flex gap-2">
               <p-inputNumber
@@ -350,7 +350,7 @@
             <div class="flex justify-between text-sm mb-2">
               <span class="font-medium">Overall Progress</span>
               <span class="font-bold text-blue-600"
-                >{{ printerState().printProgress.toFixed(1) }}%</span
+              >{{ printerState().printProgress.toFixed(1) }}%</span
               >
             </div>
             <p-progressBar
@@ -414,7 +414,7 @@
               <label
                 class="block text-sm font-semibold text-gray-700 mb-2"
                 for="filamentColorPicker"
-                >Filament Color</label
+              >Filament Color</label
               >
               <p-colorPicker
                 [(ngModel)]="filamentColorValue"
@@ -430,7 +430,7 @@
               <label
                 class="block text-sm font-semibold text-gray-700 mb-2"
                 for="layerHeightInput"
-                >Layer Height</label
+              >Layer Height</label
               >
               <p-inputNumber
                 [(ngModel)]="layerHeightValue"
@@ -450,7 +450,7 @@
               <label
                 class="block text-sm font-semibold text-gray-700 mb-2"
                 for="buildVolumeXInput"
-                >Build Volume (mm)</label
+              >Build Volume (mm)</label
               >
               <div class="grid grid-cols-3 gap-2">
                 <p-inputNumber
@@ -498,7 +498,7 @@
               <label
                 class="text-sm font-semibold text-gray-700"
                 for="showTravelMovesToggle"
-                >Show Travel Moves</label
+              >Show Travel Moves</label
               >
               <p-toggleButton
                 [(ngModel)]="showTravelMoves"
@@ -517,7 +517,7 @@
               <label
                 class="text-sm font-semibold text-gray-700"
                 for="showBuildPlateToggle"
-                >Show Build Plate</label
+              >Show Build Plate</label
               >
               <p-toggleButton
                 [(ngModel)]="showBuildPlate"
@@ -612,7 +612,7 @@
                 id="maxPathPointsInput"
               />
               <small class="text-gray-500"
-                >Higher values = better quality, lower performance</small
+              >Higher values = better quality, lower performance</small
               >
             </div>
 
@@ -635,7 +635,7 @@
                 id="batchSizeInput"
               />
               <small class="text-gray-500"
-                >Lower values = smoother updates, higher CPU usage</small
+              >Lower values = smoother updates, higher CPU usage</small
               >
             </div>
 
@@ -658,7 +658,7 @@
               />
               <div class="flex justify-between text-xs text-gray-500 mt-1">
                 <span>5 (Fast)</span>
-                <span>{{ curveResolution }} segments</span>
+                <span>{{ curveResolution() }} segments</span>
                 <span>50 (Smooth)</span>
               </div>
             </div>
@@ -740,7 +740,7 @@
               <label
                 class="block text-sm font-semibold mb-2"
                 for="mobileAnimationSpeedSlider"
-                >Speed: {{ animationSpeedValue() }}x</label
+              >Speed: {{ animationSpeedValue() }}x</label
               >
               <p-slider
                 [(ngModel)]="animationSpeedValue"
@@ -761,7 +761,7 @@
               <label
                 class="block text-sm font-semibold mb-2"
                 for="mobileFilamentColorPicker"
-                >Filament Color</label
+              >Filament Color</label
               >
               <p-colorPicker
                 [(ngModel)]="filamentColorValue"
@@ -775,7 +775,7 @@
               <label
                 class="text-sm font-semibold"
                 for="mobileShowTravelMovesToggle"
-                >Travel Moves</label
+              >Travel Moves</label
               >
               <p-toggleButton
                 [(ngModel)]="showTravelMoves"
@@ -861,19 +861,24 @@
       <ng-template pTemplate="header">
         <tr>
           <th pSortableColumn="index" style="width: 80px">
-            Index <p-sortIcon field="index" />
+            Index
+            <p-sortIcon field="index" />
           </th>
           <th pSortableColumn="command.command" style="width: 100px">
-            Command <p-sortIcon field="command.command" />
+            Command
+            <p-sortIcon field="command.command" />
           </th>
           <th pSortableColumn="command.rawLine">
-            Raw Line <p-sortIcon field="command.rawLine" />
+            Raw Line
+            <p-sortIcon field="command.rawLine" />
           </th>
           <th pSortableColumn="executionTime" style="width: 120px">
-            Exec Time <p-sortIcon field="executionTime" />
+            Exec Time
+            <p-sortIcon field="executionTime" />
           </th>
           <th pSortableColumn="cumulativeTime" style="width: 120px">
-            Total Time <p-sortIcon field="cumulativeTime" />
+            Total Time
+            <p-sortIcon field="cumulativeTime" />
           </th>
         </tr>
       </ng-template>

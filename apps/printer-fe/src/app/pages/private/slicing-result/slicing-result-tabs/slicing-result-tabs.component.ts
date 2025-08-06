@@ -17,7 +17,7 @@ import { SlicingPropertyDto } from '../../../../core/models/slicing/slicing-prop
   templateUrl: './slicing-result-tabs.component.html',
 })
 export class SlicingResultTabsComponent {
-  public readonly gcodeCommands: InputSignal<string[]> = input.required();
+  public readonly gcodeCommands: InputSignal<Blob> = input.required();
   public readonly info: InputSignal<SlicingPropertyDto> = input.required();
   public readonly materials: InputSignal<MaterialDto[]> = input.required();
 }

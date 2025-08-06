@@ -24,7 +24,7 @@
   </div>
   <div class="w-full">
     <printer-slicing-result-tabs
-      [gcodeCommands]="gcodeCommands()"
+      [gcodeCommands]="gcodeBlob()"
       [info]="slicingResult()?.slicingProperty"
       [materials]="slicingResult()?.materials"
     />

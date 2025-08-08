@@ -3,541 +3,466 @@ import {
   Component,
   computed,
   effect,
-  inject,
+  ElementRef,
   input,
   OnDestroy,
   OnInit,
   output,
   signal,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { debounceTime, Subject, takeUntil } from 'rxjs';
-
-// Components
-import { PrinterViewport3dComponent } from './viewport-3d/printer-viewport-3d.component';
-import { PrinterStatusOverlaysComponent } from './status-overlays/printer-status-overlays.component';
+import { FormsModule } from '@angular/forms';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
-  ControlAction,
-  PrinterControlPanelComponent,
-  SettingsUpdate,
-} from './control-panel/printer-control-panel.component';
-import { PrinterMobileControlsComponent } from './mobile-controls/printer-mobile-controls.component';
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
 
-// Services
-import { StreamingCommandService } from '../../../services/streaming-service';
-import { GCodeSimulatorService } from './slicing-simulator.service';
+// PrimeNG imports
+import { ButtonModule } from 'primeng/button';
+import { SliderModule } from 'primeng/slider';
+import { ProgressBarModule } from 'primeng/progressbar';
+import { CardModule } from 'primeng/card';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { ColorPickerModule } from 'primeng/colorpicker';
+import { ToggleButtonModule } from 'primeng/togglebutton';
+import { ChipModule } from 'primeng/chip';
+import { DividerModule } from 'primeng/divider';
+import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
+import { DialogModule } from 'primeng/dialog';
+import { TableModule } from 'primeng/table';
+import { TabViewModule } from 'primeng/tabview';
+import { SidebarModule } from 'primeng/sidebar';
+import { SpeedDialModule } from 'primeng/speeddial';
+import { PanelModule } from 'primeng/panel';
+import { AccordionModule } from 'primeng/accordion';
 
-// Models
 import {
-  CameraSettings,
-  CommandExecutionInfo,
-  PerformanceMetrics,
+  GCodeCommand,
+  GCodeSimulatorService,
   SimulationState,
-  SimulatorEvent,
-  ViewportSettings,
-} from '../../../models/simulator/simulator.models';
-import { PrinterCommandHistoryComponent } from './command-history/printer-command-history.component';
+} from './slicing-simulator.service';
+
+interface CommandExecutionInfo {
+  index: number;
+  command: GCodeCommand;
+  executionTime: number;
+  cumulativeTime: number;
+}
 
 @Component({
   selector: 'printer-gcode-simulator',
   standalone: true,
   imports: [
     CommonModule,
-    PrinterViewport3dComponent,
-    PrinterStatusOverlaysComponent,
-    PrinterControlPanelComponent,
-    PrinterMobileControlsComponent,
-    PrinterCommandHistoryComponent,
+    FormsModule,
+    ButtonModule,
+    SliderModule,
+    ProgressBarModule,
+    CardModule,
+    InputNumberModule,
+    ColorPickerModule,
+    ToggleButtonModule,
+    ChipModule,
+    DividerModule,
+    TagModule,
+    TooltipModule,
+    DialogModule,
+    TableModule,
+    TabViewModule,
+    SidebarModule,
+    SpeedDialModule,
+    PanelModule,
+    AccordionModule,
+    CommonModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div
-      class="simulator-container h-screen flex flex-col lg:flex-row bg-gradient-to-br from-gray-100 to-gray-200"
-    >
-      <!-- Mobile Controls (Header) -->
-      <printer-mobile-controls
-        [printerState]="printerState()"
-        [simulationState]="simulationState()"
-        [settings]="viewportSettings()"
-        (controlAction)="handleControlAction($event)"
-        (settingsChange)="handleSettingsUpdate($event)"
-        (cameraAction)="handleCameraAction($event)"
-        (actionButtonClick)="handleActionButtonClick($event)"
-      />
-
-      <!-- Main Content Area -->
-      <div class="flex-1 flex flex-col lg:flex-row relative overflow-hidden">
-        <!-- 3D Viewport Container -->
-        <div
-          class="viewport-container flex-1 relative"
-          [ngClass]="{
-            'h-1/2': isMobile(),
-            'lg:h-full': isMobile()
-          }"
-        >
-          <!-- 3D Viewport -->
-          <printer-viewport-3d
-            [settings]="viewportSettings()"
-            [cameraSettings]="cameraSettings()"
-            [autoResize]="true"
-            (cameraChange)="handleCameraChange($event)"
-            (performanceUpdate)="handlePerformanceUpdate($event)"
-            (renderError)="handleRenderError($event)"
-            (userInteraction)="handleViewportInteraction($event)"
-          />
-
-          <!-- Status Overlays -->
-          <printer-status-overlays
-            [printerState]="printerState()"
-            [simulationState]="simulationState()"
-            [performanceMetrics]="performanceMetrics()"
-            [errorMessage]="errorMessage()"
-            [isLoading]="isLoading()"
-            [loadingProgress]="loadingProgress()"
-            [loadingMessage]="loadingMessage()"
-            [isMobile]="isMobile()"
-            [showDebugInfo]="showDebugInfo()"
-          />
-        </div>
-      </div>
-
-      <!-- Desktop Control Panel -->
-      <printer-control-panel
-        [printerState]="printerState()"
-        [simulationState]="simulationState()"
-        [settings]="viewportSettings()"
-        (controlAction)="handleControlAction($event)"
-        (settingsChange)="handleSettingsUpdate($event)"
-        (cameraAction)="handleCameraAction($event)"
-        (actionButtonClick)="handleActionButtonClick($event)"
-        class="hidden lg:block"
-      />
-      <!-- Command History Dialog -->
-      <printer-command-history
-        [(visible)]="showCommandHistory"
-        [commandHistory]="commandHistory()"
-        [currentCommandIndex]="printerState().currentCommandIndex"
-        [isLoading]="historyLoading()"
-        (commandSelect)="handleCommandSelect($event)"
-        (exportHistory)="handleExportHistory()"
-        (filterChange)="handleHistoryFilter($event)"
-      />
-    </div>
-  `,
+  templateUrl: './slicing-simulator.component.html',
   styles: [
     `
       .simulator-container {
-        min-height: 100vh;
-        max-height: 100vh;
-        overflow: hidden;
+        @apply min-h-screen;
       }
 
-      .viewport-container {
-        position: relative;
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      .canvas-container canvas {
+        @apply w-full h-full block;
       }
 
-      @media (max-width: 1024px) {
-        .viewport-container {
-          height: calc(100vh - 80px); /* Account for mobile header */
+      .glass-panel {
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+
+      :host ::ng-deep .modern-panel .p-panel-header {
+        @apply bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-t-lg;
+      }
+
+      :host ::ng-deep .modern-panel .p-panel-content {
+        @apply bg-white/90 backdrop-blur-sm;
+      }
+
+      :host ::ng-deep .modern-accordion .p-accordion-header {
+        @apply bg-gradient-to-r from-gray-100 to-gray-200;
+      }
+
+      :host ::ng-deep .modern-accordion .p-accordion-content {
+        @apply bg-white/95;
+      }
+
+      :host ::ng-deep .custom-progress .p-progressbar-value {
+        @apply bg-gradient-to-r from-blue-500 to-blue-600;
+      }
+
+      :host ::ng-deep .custom-progress-green .p-progressbar-value {
+        @apply bg-gradient-to-r from-green-500 to-green-600;
+      }
+
+      :host ::ng-deep .modern-slider .p-slider-range {
+        @apply bg-gradient-to-r from-blue-500 to-blue-600;
+      }
+
+      :host ::ng-deep .modern-button {
+        @apply shadow-lg hover:shadow-xl transition-all duration-300;
+      }
+
+      :host ::ng-deep .modern-input .p-inputnumber-input {
+        @apply border-2 border-gray-200 focus:border-blue-500 rounded-lg;
+      }
+
+      :host ::ng-deep .modern-toggle.p-togglebutton {
+        @apply border-2 border-gray-200 rounded-lg transition-all duration-300;
+      }
+
+      :host ::ng-deep .modern-dialog .p-dialog-header {
+        @apply bg-gradient-to-r from-blue-500 to-blue-600 text-white;
+      }
+
+      :host ::ng-deep .modern-table .p-datatable-thead > tr > th {
+        @apply bg-gradient-to-r from-gray-100 to-gray-200 border-b-2 border-gray-300;
+      }
+
+      :host ::ng-deep .mobile-tabs .p-tabview-nav {
+        @apply justify-center;
+      }
+
+      @media (max-width: 768px) {
+        .control-panel {
+          @apply hidden;
         }
       }
 
-      @media (min-width: 1024px) {
-        .viewport-container {
-          height: 100vh;
+      /* Animations */
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(-20px);
         }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .animate-slide-in {
+        animation: slideIn 0.5s ease-out;
       }
     `,
   ],
+  animations: [
+    trigger('slideIn', [
+      state(
+        'void',
+        style({
+          opacity: 0,
+          transform: 'translateX(-20px)',
+        })
+      ),
+      transition('void => *', [
+        animate(
+          '0.5s ease-out',
+          style({
+            opacity: 1,
+            transform: 'translateX(0)',
+          })
+        ),
+      ]),
+      transition('* => void', [
+        animate(
+          '0.3s ease-in',
+          style({
+            opacity: 0,
+            transform: 'translateX(20px)',
+          })
+        ),
+      ]),
+    ]),
+  ],
 })
 export class SlicingSimulatorComponent implements OnInit, OnDestroy {
-  // Injected services
-  private streamingService = inject(StreamingCommandService);
-  private simulatorService = inject(GCodeSimulatorService);
+  @ViewChild('canvas', { static: true })
+  canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('fileInput') fileInput!: ElementRef;
 
   // Inputs
-  readonly gCodeText = input<string>('');
-  readonly gCodeFile = input<File | null>(null);
+  readonly commands = input<string[]>([]);
+  readonly gcodeBlobInput = input<Blob>();
+  readonly animationSpeedInput = input<number>(1.0);
+  readonly filamentColorInput = input<string>('#FF4444');
+  readonly layerHeightInput = input<number>(0.2);
+  readonly nozzleDiameterInput = input<number>(0.4);
+  readonly buildVolumeXInput = input<number>(200);
+  readonly buildVolumeYInput = input<number>(200);
+  readonly buildVolumeZInput = input<number>(200);
+  readonly showTravelMovesInput = input<boolean>(false);
+  readonly showBuildPlateInput = input<boolean>(true);
   readonly autoStart = input<boolean>(false);
-  readonly initialSettings = input<Partial<ViewportSettings> | null>(null);
-  readonly initialCamera = input<CameraSettings | null>(null);
 
   // Outputs
-  readonly stateChange = output<SimulatorEvent>();
+  readonly stateChange = output<any>();
   readonly layerChange = output<number>();
   readonly commandChange = output<number>();
   readonly simulationComplete = output<void>();
   readonly simulationError = output<string>();
-  readonly settingsChange = output<ViewportSettings>();
 
-  // Destroy subject
-  private destroy$ = new Subject<void>();
+  // Three.js objects
+  private renderer!: THREE.WebGLRenderer;
+  private camera!: THREE.PerspectiveCamera;
+  private controls!: OrbitControls;
+  private animationId!: number;
 
-  // Local state signals
-  private _isLoading = signal<boolean>(false);
-  private _loadingProgress = signal<number>(0);
-  private _loadingMessage = signal<string>('Initializing...');
-  private _errorMessage = signal<string | null>(null);
-  private _performanceMetrics = signal<PerformanceMetrics>({
-    fps: 60,
-    pathObjects: 0,
-    memoryUsage: 0,
-    renderTime: 0,
-    commandProcessingRate: 0,
-  });
+  // UI State
+  readonly sidebarVisible = signal<boolean>(false);
+  readonly showCommandDialog = signal<boolean>(false);
+  readonly isMobile = signal<boolean>(false);
+
+  // Control values
+  animationSpeedValue = signal<number>(1.0);
+  filamentColorValue = signal<string>('#FF4444');
+  layerHeightValue = signal<number>(0.2);
+  nozzleDiameterValue = signal<number>(0.4);
+  buildVolumeX = signal<number>(200);
+  buildVolumeY = signal<number>(200);
+  buildVolumeZ = signal<number>(200);
+  showTravelMoves = signal<boolean>(false);
+  showBuildPlate = signal<boolean>(true);
+  jumpTarget = signal<number>(0);
+
+  showBezierControls = signal<boolean>(false);
+  maxPathPoints = signal<number>(50000);
+  batchUpdateSize = signal<number>(100);
+  curveResolution = signal<number>(20);
+
+  // Performance tracking
+  private lastFrameTime = 0;
+  private frameCount = 0;
+  private fps = 0;
+  private fpsUpdateInterval = 1000;
+
+  // Command history
   private _commandHistory = signal<CommandExecutionInfo[]>([]);
-  private _historyLoading = signal<boolean>(false);
-  private _isMobile = signal<boolean>(false);
-  private _showDebugInfo = signal<boolean>(false);
-
-  // Settings
-  private _viewportSettings = signal<ViewportSettings>({
-    animationSpeed: 1.0,
-    filamentColor: '#FF4444',
-    layerHeight: 0.2,
-    nozzleDiameter: 0.4,
-    buildVolume: { x: 200, y: 200, z: 200 },
-    showTravelMoves: false,
-    showBuildPlate: true,
-    showBezierControls: false,
-    maxPathPoints: 50000,
-    curveResolution: 20,
-  });
-
-  private _cameraSettings = signal<CameraSettings | null>(null);
-
-  // Dialog states
-  readonly showCommandHistory = signal<boolean>(false);
-
-  // Public readonly signals
-  readonly isLoading = this._isLoading.asReadonly();
-  readonly loadingProgress = this._loadingProgress.asReadonly();
-  readonly loadingMessage = this._loadingMessage.asReadonly();
-  readonly errorMessage = this._errorMessage.asReadonly();
-  readonly performanceMetrics = this._performanceMetrics.asReadonly();
   readonly commandHistory = this._commandHistory.asReadonly();
-  readonly historyLoading = this._historyLoading.asReadonly();
-  readonly isMobile = this._isMobile.asReadonly();
-  readonly showDebugInfo = this._showDebugInfo.asReadonly();
-  readonly viewportSettings = this._viewportSettings.asReadonly();
-  readonly cameraSettings = this._cameraSettings.asReadonly();
 
-  // Computed properties from simulator service
+  // Computed signals
   readonly simulationState = computed(() =>
     this.simulatorService.simulationState()
   );
   readonly printerState = computed(() => this.simulatorService.fullState());
+  readonly errorMessage = computed(() => this.simulatorService.errorMessage());
+  readonly currentCommand = computed(() =>
+    this.simulatorService.getCurrentCommand()
+  );
 
-  // Computed properties for UI state
-  readonly isSimulationActive = computed(() => {
-    const state = this.simulationState();
-    return (
-      state === SimulationState.RUNNING || state === SimulationState.PAUSED
-    );
-  });
+  // Control states
+  readonly canStart = computed(
+    () =>
+      this.simulationState() === SimulationState.IDLE ||
+      this.simulationState() === SimulationState.COMPLETED
+  );
+  readonly canPause = computed(
+    () =>
+      this.simulationState() === SimulationState.RUNNING ||
+      this.simulationState() === SimulationState.PAUSED
+  );
+  readonly canStop = computed(
+    () =>
+      this.simulationState() === SimulationState.RUNNING ||
+      this.simulationState() === SimulationState.PAUSED
+  );
+  readonly canReset = computed(
+    () => this.simulationState() !== SimulationState.RUNNING
+  );
 
-  readonly canLoadNewFile = computed(() => {
-    return this.simulationState() === SimulationState.IDLE;
-  });
+  // Speed dial items for mobile
+  readonly speedDialItems = computed(() => [
+    {
+      icon: 'pi pi-play',
+      command: () => {
+        if (this.canStart()) this.start();
+      },
+      disabled: !this.canStart(),
+    },
+    {
+      icon: 'pi pi-pause',
+      command: () => {
+        if (this.canPause()) this.pause();
+      },
+      disabled: !this.canPause(),
+    },
+    {
+      icon: 'pi pi-stop',
+      command: () => {
+        if (this.canStop()) this.stop();
+      },
+      disabled: !this.canStop(),
+    },
+    {
+      icon: 'pi pi-refresh',
+      command: () => {
+        if (this.canReset()) this.reset();
+      },
+      disabled: !this.canReset(),
+    },
+  ]);
 
-  constructor() {
+  protected readonly Math = Math;
+  protected bufferSize: number;
+
+  constructor(private simulatorService: GCodeSimulatorService) {
     this.setupEffects();
-    this.checkMobileDevice();
-    this.initializeSettings();
+    this.checkMobile();
+    this.startFPSTracking();
+
+    effect(() => {
+      const blob = this.gcodeBlobInput();
+      if (blob) {
+        this.simulatorService.loadGCodeBlob(blob);
+      }
+    });
   }
 
-  ngOnInit(): void {
-    this.setupSubscriptions();
-    this.loadInitialContent();
+  ngOnInit() {
+    this.initializeThreeJS();
+    this.setupResizeHandler();
+
+    // Center camera and set better initial zoom
+    setTimeout(() => {
+      this.resetCameraWithBetterView();
+    }, 100);
   }
 
-  ngOnDestroy(): void {
+  ngOnDestroy() {
     this.cleanup();
   }
 
-  /**
-   * Load G-code from text
-   */
-  async loadGCodeText(gCodeText: string): Promise<void> {
-    if (!this.canLoadNewFile()) {
-      this.handleError('Cannot load new file while simulation is running');
-      return;
-    }
+  private checkMobile() {
+    this.isMobile.set(window.innerWidth < 1024);
+    window.addEventListener('resize', () => {
+      this.isMobile.set(window.innerWidth < 1024);
+    });
+  }
 
-    try {
-      this._isLoading.set(true);
-      this._loadingMessage.set('Processing G-code...');
-      this._errorMessage.set(null);
+  private setupEffects() {
+    // Sync input values
+    effect(() => {
+      this.animationSpeedValue.set(this.animationSpeedInput());
+      this.filamentColorValue.set(this.filamentColorInput());
+      this.layerHeightValue.set(this.layerHeightInput());
+      this.nozzleDiameterValue.set(this.nozzleDiameterInput());
+      this.buildVolumeX.set(this.buildVolumeXInput());
+      this.buildVolumeY.set(this.buildVolumeYInput());
+      this.buildVolumeZ.set(this.buildVolumeZInput());
+      this.showTravelMoves.set(this.showTravelMovesInput());
+      this.showBuildPlate.set(this.showBuildPlateInput());
+    });
 
-      // Stream commands through the streaming service
-      await this.streamingService.streamCommands(gCodeText);
+    // Effect per sincronizzare velocità con il servizio
+    effect(() => {
+      const speed = this.animationSpeedValue();
+      this.simulatorService.setAnimationSpeed(speed);
+    });
 
-      // Load commands into simulator
-      const commands = this.streamingService.getCommands(
-        0,
-        this.streamingService.totalCommands()
-      );
-      await this.simulatorService.loadCommands(
-        commands.map((cmd) => cmd.rawLine)
-      );
+    // Nuovo effect per performance monitoring
+    effect(() => {
+      const pathCount = this.getTotalPathObjects();
+      const fps = this.getCurrentFPS();
 
-      this._loadingMessage.set('Preparing 3D visualization...');
-
-      // Auto-start if requested
-      if (this.autoStart()) {
-        await this.startSimulation();
+      // Warning se performance scadenti
+      if (pathCount > 10000 && fps < 30) {
+        console.warn(
+          'Performance warning: Consider reducing max path points or batch size'
+        );
       }
-    } catch (error) {
-      this.handleError(`Failed to load G-code: ${error}`);
-    } finally {
-      this._isLoading.set(false);
-    }
-  }
+    });
 
-  /**
-   * Load G-code from file
-   */
-  async loadGCodeFile(file: File): Promise<void> {
-    if (!this.canLoadNewFile()) {
-      this.handleError('Cannot load new file while simulation is running');
-      return;
-    }
+    // Effect per ottimizzazioni automatiche
+    effect(() => {
+      const totalCommands = this.printerState().totalCommands;
+      const currentFPS = this.getCurrentFPS();
 
-    try {
-      this._isLoading.set(true);
-      this._loadingMessage.set(`Loading ${file.name}...`);
-      this._errorMessage.set(null);
-
-      // Stream commands from file
-      await this.streamingService.streamFromFile(file);
-
-      // Load commands into simulator
-      const commands = this.streamingService.getCommands(
-        0,
-        this.streamingService.totalCommands()
-      );
-      await this.simulatorService.loadCommands(
-        commands.map((cmd) => cmd.rawLine)
-      );
-
-      this._loadingMessage.set('Preparing 3D visualization...');
-
-      // Auto-start if requested
-      if (this.autoStart()) {
-        await this.startSimulation();
-      }
-    } catch (error) {
-      this.handleError(`Failed to load file: ${error}`);
-    } finally {
-      this._isLoading.set(false);
-    }
-  }
-
-  /**
-   * Start simulation
-   */
-  async startSimulation(): Promise<void> {
-    try {
-      this.simulatorService.start();
-      this.emitStateChange('stateChange');
-    } catch (error) {
-      this.handleError(`Failed to start simulation: ${error}`);
-    }
-  }
-
-  /**
-   * Export current settings
-   */
-  exportSettings(): string {
-    const settings = {
-      viewport: this.viewportSettings(),
-      camera: this.cameraSettings(),
-      timestamp: new Date().toISOString(),
-    };
-    return JSON.stringify(settings, null, 2);
-  }
-
-  /**
-   * Import settings
-   */
-  importSettings(settingsJson: string): void {
-    try {
-      const settings = JSON.parse(settingsJson);
-
-      if (settings.viewport) {
-        this._viewportSettings.set(settings.viewport);
+      // Auto-ottimizzazione se file molto grande
+      if (totalCommands > 50000 && this.maxPathPoints() > 30000) {
+        console.info(
+          'Large file detected, consider reducing max path points for better performance'
+        );
       }
 
-      if (settings.camera) {
-        this._cameraSettings.set(settings.camera);
+      // Auto-riduzione qualità se FPS troppo basso
+      if (currentFPS < 20 && currentFPS > 0 && this.curveResolution() > 30) {
+        console.info('Low FPS detected, consider reducing curve resolution');
       }
+    });
 
-      this.settingsChange.emit(this.viewportSettings());
-    } catch (error) {
-      this.handleError(`Failed to import settings: ${error}`);
-    }
-  }
+    // Effect per aggiornamento velocità in tempo reale
+    effect(() => {
+      const speed = this.animationSpeedValue();
+      this.simulatorService.setAnimationSpeed(speed);
+    });
 
-  /**
-   * Take screenshot
-   */
-  takeScreenshot(): string | null {
-    // This would be implemented by accessing the viewport component
-    // For now, return null - in a real implementation, you'd use ViewChild
-    return null;
-  }
-
-  // Event handlers
-  handleControlAction(action: ControlAction): void {
-    try {
-      switch (action.type) {
-        case 'start':
+    // Load commands
+    effect(() => {
+      const commands = this.commands();
+      if (commands.length > 0) {
+        this.simulatorService.loadCommands(commands);
+        this._commandHistory.set([]);
+        if (this.autoStart()) {
           this.simulatorService.start();
-          break;
-        case 'pause':
-          this.simulatorService.pause();
-          break;
-        case 'stop':
-          this.simulatorService.stop();
-          break;
-        case 'reset':
-          this.simulatorService.reset();
-          this.resetCommandHistory();
-          break;
-        case 'stepBack':
-          this.simulatorService.stepBack(action.payload || 1);
-          break;
-        case 'stepForward':
-          this.simulatorService.stepForward(action.payload || 1);
-          break;
-        case 'jumpTo':
-          this.simulatorService.jumpToCommand(action.payload);
-          break;
-      }
-      this.emitStateChange('stateChange');
-    } catch (error) {
-      this.handleError(`Control action failed: ${error}`);
-    }
-  }
-
-  handleSettingsUpdate(update: SettingsUpdate): void {
-    this._viewportSettings.update((current) => ({
-      ...current,
-      [update.setting]: update.value,
-    }));
-    this.settingsChange.emit(this.viewportSettings());
-  }
-
-  handleCameraAction(
-    action: 'reset' | 'focus' | 'topView' | 'isometric'
-  ): void {
-    // These would be handled by accessing the viewport component via ViewChild
-    console.log('Camera action:', action);
-  }
-
-  handleActionButtonClick(action: 'showHistory' | 'exportSettings'): void {
-    switch (action) {
-      case 'showHistory':
-        this.showCommandHistory.set(true);
-        this.loadCommandHistory();
-        break;
-      case 'exportSettings':
-        this.downloadSettings();
-        break;
-    }
-  }
-
-  handleCameraChange(settings: CameraSettings): void {
-    this._cameraSettings.set(settings);
-  }
-
-  handlePerformanceUpdate(metrics: PerformanceMetrics): void {
-    this._performanceMetrics.set(metrics);
-
-    // Auto-enable debug info if performance is poor
-    const shouldShowDebug = metrics.fps < 30 || metrics.renderTime > 16.67;
-    this._showDebugInfo.set(shouldShowDebug);
-  }
-
-  handleRenderError(error: string): void {
-    this.handleError(`Render error: ${error}`);
-  }
-
-  handleViewportInteraction(type: 'start' | 'end'): void {
-    // Handle viewport interaction feedback if needed
-  }
-
-  handleCommandSelect(index: number): void {
-    try {
-      this.simulatorService.jumpToCommand(index);
-      this.showCommandHistory.set(false);
-      this.emitStateChange('commandChange');
-    } catch (error) {
-      this.handleError(`Failed to jump to command: ${error}`);
-    }
-  }
-
-  handleExportHistory(): void {
-    this.downloadCommandHistory();
-  }
-
-  handleHistoryFilter(filter: string): void {
-    // Implement history filtering logic
-    console.log('History filter:', filter);
-  }
-
-  private setupEffects(): void {
-    // Watch for input changes
-    effect(() => {
-      const gCodeText = this.gCodeText();
-      if (gCodeText && this.canLoadNewFile()) {
-        this.loadGCodeText(gCodeText);
+        }
       }
     });
 
-    effect(() => {
-      const gCodeFile = this.gCodeFile();
-      if (gCodeFile && this.canLoadNewFile()) {
-        this.loadGCodeFile(gCodeFile);
-      }
-    });
-
-    // Apply initial settings
-    effect(() => {
-      const initialSettings = this.initialSettings();
-      if (initialSettings) {
-        this._viewportSettings.update((current) => ({
-          ...current,
-          ...initialSettings,
-        }));
-      }
-    });
-
-    effect(() => {
-      const initialCamera = this.initialCamera();
-      if (initialCamera) {
-        this._cameraSettings.set(initialCamera);
-      }
-    });
-
-    // Update command history
+    // Track command execution for history
     effect(() => {
       const currentIndex = this.printerState().currentCommandIndex;
-      const currentCommand = this.simulatorService.getCurrentCommand();
+      const command = this.currentCommand();
 
-      if (currentCommand && currentIndex >= 0) {
-        this.updateCommandHistory(currentIndex, currentCommand);
+      if (command && currentIndex > 0) {
+        const currentHistory = this._commandHistory();
+        const existingIndex = currentHistory.findIndex(
+          (h) => h.index === currentIndex - 1
+        );
+
+        if (existingIndex === -1) {
+          const newEntry: CommandExecutionInfo = {
+            index: currentIndex - 1,
+            command: command,
+            executionTime: 0.1, // Approximate execution time
+            cumulativeTime: this.printerState().executionTime,
+          };
+
+          this._commandHistory.set([...currentHistory, newEntry]);
+        }
       }
     });
 
     // Emit events
     effect(() => {
-      const state = this.simulationState();
-      if (state === SimulationState.COMPLETED) {
-        this.simulationComplete.emit();
-      }
-      this.emitStateChange('stateChange');
+      this.stateChange.emit(this.printerState());
     });
 
     effect(() => {
@@ -547,156 +472,475 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     effect(() => {
       this.commandChange.emit(this.printerState().currentCommandIndex);
     });
-  }
 
-  private setupSubscriptions(): void {
-    // Subscribe to streaming service events
-    this.streamingService.errors$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((error) => {
-        this.handleError(error);
-      });
-
-    // Subscribe to performance monitoring
-    this.streamingService.commandChunks$
-      .pipe(takeUntil(this.destroy$), debounceTime(100))
-      .subscribe((chunk) => {
-        const progress = (chunk.chunkIndex / chunk.totalChunks) * 100;
-        this._loadingProgress.set(progress);
-      });
-  }
-
-  private checkMobileDevice(): void {
-    const checkMobile = () => {
-      this._isMobile.set(window.innerWidth < 1024);
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-  }
-
-  private initializeSettings(): void {
-    // Apply any initial settings
-    const initial = this.initialSettings();
-    if (initial) {
-      this._viewportSettings.update((current) => ({
-        ...current,
-        ...initial,
-      }));
-    }
-  }
-
-  private async loadInitialContent(): Promise<void> {
-    const gCodeText = this.gCodeText();
-    const gCodeFile = this.gCodeFile();
-
-    if (gCodeFile) {
-      await this.loadGCodeFile(gCodeFile);
-    } else if (gCodeText) {
-      await this.loadGCodeText(gCodeText);
-    }
-  }
-
-  private updateCommandHistory(index: number, command: any): void {
-    this._commandHistory.update((history) => {
-      const existingIndex = history.findIndex((h) => h.index === index);
-
-      if (existingIndex === -1) {
-        const newEntry: CommandExecutionInfo = {
-          index,
-          command,
-          executionTime: 0.1, // Approximate
-          cumulativeTime: this.printerState().executionTime,
-          timestamp: new Date(),
-        };
-
-        return [...history, newEntry].sort((a, b) => a.index - b.index);
+    effect(() => {
+      if (this.simulationState() === SimulationState.COMPLETED) {
+        this.simulationComplete.emit();
       }
+    });
 
-      return history;
+    effect(() => {
+      const error = this.errorMessage();
+      if (error) {
+        this.simulationError.emit(error);
+      }
     });
   }
 
-  private resetCommandHistory(): void {
-    this._commandHistory.set([]);
+  /**
+   * Avvia il tracking FPS
+   */
+  private startFPSTracking(): void {
+    const trackFPS = (timestamp: number) => {
+      this.frameCount++;
+
+      if (timestamp - this.lastFrameTime >= this.fpsUpdateInterval) {
+        this.fps = Math.round(
+          (this.frameCount * 1000) / (timestamp - this.lastFrameTime)
+        );
+        this.frameCount = 0;
+        this.lastFrameTime = timestamp;
+      }
+
+      requestAnimationFrame(trackFPS);
+    };
+
+    requestAnimationFrame(trackFPS);
   }
 
-  private async loadCommandHistory(): Promise<void> {
-    this._historyLoading.set(true);
+  private initializeThreeJS() {
+    const canvas = this.canvasRef.nativeElement;
+    const container = canvas.parentElement!;
 
-    try {
-      // Simulate loading delay for large histories
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    // Renderer
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: canvas,
+      antialias: true,
+      alpha: true,
+    });
+    this.renderer.setSize(container.clientWidth, container.clientHeight);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setClearColor(0x1a1a1a, 1);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-      // Command history is already maintained through effects
-      // Just indicate loading is complete
-      this._historyLoading.set(false);
-    } catch (error) {
-      this.handleError(`Failed to load command history: ${error}`);
-      this._historyLoading.set(false);
+    // Camera with better FOV for mobile
+    this.camera = new THREE.PerspectiveCamera(
+      this.isMobile() ? 85 : 75,
+      container.clientWidth / container.clientHeight,
+      0.1,
+      2000
+    );
+
+    // Controls
+    this.controls = new OrbitControls(this.camera, canvas);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.05;
+    this.controls.minDistance = 50;
+    this.controls.maxDistance = 1000;
+
+    this.setupLighting();
+    this.animate();
+  }
+
+  private setupLighting() {
+    const scene = this.simulatorService.getScene();
+
+    // Enhanced lighting setup
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    directionalLight.position.set(100, 200, 100);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    scene.add(directionalLight);
+
+    const pointLight = new THREE.PointLight(0xffffff, 0.7);
+    pointLight.position.set(-100, 100, 100);
+    scene.add(pointLight);
+
+    // Add rim lighting
+    const rimLight = new THREE.DirectionalLight(0x4488ff, 0.3);
+    rimLight.position.set(-100, 50, -100);
+    scene.add(rimLight);
+  }
+
+  /**
+   * Ottiene FPS corrente
+   */
+  getCurrentFPS(): number {
+    return this.fps;
+  }
+
+  /**
+   * Ottiene numero totale oggetti path
+   */
+  getTotalPathObjects(): number {
+    const pathSegments = this.simulatorService.pathSegments();
+    return pathSegments.length;
+  }
+
+  /**
+   * Controlla se ci sono comandi avanzati
+   */
+  hasAdvancedCommands(): boolean {
+    const commands = this.simulatorService.commands();
+    return commands.some(
+      (cmd) =>
+        cmd.command.includes('G2') ||
+        cmd.command.includes('G3') ||
+        cmd.command.includes('G5') ||
+        cmd.command.includes('G6')
+    );
+  }
+
+  /**
+   * Conta comandi di un tipo specifico
+   */
+  getCommandCount(commandType: string): number {
+    const commands = this.simulatorService.commands();
+    return commands.filter((cmd) => cmd.command === commandType).length;
+  }
+
+  /**
+   * Aggiorna visualizzazione punti controllo Bezier
+   */
+  updateShowBezierControls(event: any): void {
+    this.showBezierControls.set(event.checked);
+    this.simulatorService.setBezierControlsVisible(event.checked);
+  }
+
+  /**
+   * Aggiorna limite massimo punti path
+   */
+  updateMaxPathPoints(event: any): void {
+    const value = typeof event === 'number' ? event : event.value;
+    this.maxPathPoints.set(value);
+    this.simulatorService.setMaxPathPoints(value);
+  }
+
+  /**
+   * Aggiorna dimensione batch per aggiornamenti
+   */
+  updateBatchSize(event: any): void {
+    const value = typeof event === 'number' ? event : event.value;
+    this.batchUpdateSize.set(value);
+    this.simulatorService.setBatchSize(value);
+  }
+
+  /**
+   * Aggiorna risoluzione curve
+   */
+  updateCurveResolution(event: any): void {
+    const value = typeof event === 'number' ? event : event.value;
+    this.curveResolution.set(value);
+    this.simulatorService.setCurveResolution(value);
+  }
+
+  private resetCameraWithBetterView() {
+    const buildVolume = {
+      x: this.buildVolumeX(),
+      y: this.buildVolumeY(),
+      z: this.buildVolumeZ(),
+    };
+
+    // Calculate optimal camera position based on build volume
+    const maxDimension = Math.max(buildVolume.x, buildVolume.y, buildVolume.z);
+    const cameraDistance = maxDimension * 1.5;
+
+    // Position camera at 45-degree angle for good view
+    this.camera.position.set(
+      buildVolume.x / 2 + cameraDistance * 0.7,
+      cameraDistance,
+      buildVolume.y / 2 + cameraDistance * 0.7
+    );
+
+    // Target center of build volume
+    this.controls.target.set(
+      buildVolume.x / 2,
+      buildVolume.z / 4,
+      buildVolume.y / 2
+    );
+
+    this.controls.update();
+  }
+
+  private setupResizeHandler() {
+    const canvas = this.canvasRef.nativeElement;
+    const container = canvas.parentElement!;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
+      }
+    });
+
+    resizeObserver.observe(container);
+  }
+
+  private animate() {
+    this.animationId = requestAnimationFrame(() => this.animate());
+    this.controls.update();
+    this.renderer.render(this.simulatorService.getScene(), this.camera);
+  }
+
+  private cleanup() {
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+    }
+    this.simulatorService.dispose();
+    this.controls?.dispose();
+    this.renderer?.dispose();
+  }
+
+  // Control Methods
+  start() {
+    this.simulatorService.start();
+  }
+
+  pause() {
+    this.simulatorService.pause();
+  }
+
+  stop() {
+    this.simulatorService.stop();
+  }
+
+  reset() {
+    // Reset normale
+    this.simulatorService.reset();
+    this._commandHistory.set([]);
+
+    // Reset contatori performance
+    this.frameCount = 0;
+    this.fps = 0;
+
+    console.debug('Simulator reset with performance counters cleared');
+  }
+
+  stepBack(steps = 1) {
+    this.simulatorService.stepBack(steps);
+  }
+
+  stepForward(steps = 1) {
+    this.simulatorService.stepForward(steps);
+  }
+
+  jumpToCommand() {
+    const target = this.jumpTarget();
+    if (target >= 0 && target < this.printerState().totalCommands) {
+      this.simulatorService.jumpToCommand(target);
     }
   }
 
-  private downloadSettings(): void {
-    const settingsJson = this.exportSettings();
-    const blob = new Blob([settingsJson], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+  xportPerformanceStats(): void {
+    const stats = {
+      timestamp: new Date().toISOString(),
+      totalCommands: this.printerState().totalCommands,
+      pathObjects: this.getTotalPathObjects(),
+      currentFPS: this.getCurrentFPS(),
+      animationSpeed: this.animationSpeedValue(),
+      maxPathPoints: this.maxPathPoints(),
+      batchSize: this.batchUpdateSize(),
+      curveResolution: this.curveResolution(),
+      advancedCommands: {
+        arcs: this.getCommandCount('G2') + this.getCommandCount('G3'),
+        bezier: this.getCommandCount('G5') + this.getCommandCount('G5.1'),
+        nurbs: this.getCommandCount('G6'),
+      },
+    };
 
+    const blob = new Blob([JSON.stringify(stats, null, 2)], {
+      type: 'application/json',
+    });
+    const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'gcode-simulator-settings.json';
+    a.download = 'gcode-performance-stats.json';
     a.click();
-
-    URL.revokeObjectURL(url);
+    window.URL.revokeObjectURL(url);
   }
 
-  private downloadCommandHistory(): void {
-    const history = this.commandHistory();
+  // Settings Updates
+  updateAnimationSpeed(event: any) {
+    const newSpeed = typeof event === 'number' ? event : event.value;
+    this.animationSpeedValue.set(newSpeed);
+
+    // Applica immediatamente al servizio
+    this.simulatorService.setAnimationSpeed(newSpeed);
+
+    // Feedback visivo opzionale
+    if (newSpeed > 10) {
+      console.debug(`High speed mode: ${newSpeed}x`);
+    }
+  }
+
+  updateFilamentColor(event: any) {
+    this.filamentColorValue.set(event.value);
+  }
+
+  updateLayerHeight(event: any) {
+    this.layerHeightValue.set(event.value);
+  }
+
+  updateNozzleDiameter(event: any) {
+    this.nozzleDiameterValue.set(event.value);
+  }
+
+  updateBuildVolume() {
+    // Update build volume visualization in service
+  }
+
+  updateShowTravelMoves(event: any) {
+    this.showTravelMoves.set(event.checked);
+  }
+
+  updateShowBuildPlate(event: any) {
+    this.showBuildPlate.set(event.checked);
+  }
+
+  // Camera Controls
+  resetCamera() {
+    this.resetCameraWithBetterView();
+  }
+
+  focusOnNozzle() {
+    const pos = this.printerState().position;
+    this.controls.target.set(pos.x, pos.z, pos.y);
+    const distance = 50;
+    this.camera.position.set(
+      pos.x + distance,
+      pos.z + distance,
+      pos.y + distance
+    );
+    this.controls.update();
+  }
+
+  setTopView() {
+    const buildVolume = {
+      x: this.buildVolumeX(),
+      y: this.buildVolumeY(),
+      z: this.buildVolumeZ(),
+    };
+
+    this.camera.position.set(
+      buildVolume.x / 2,
+      buildVolume.z + 200,
+      buildVolume.y / 2
+    );
+    this.controls.target.set(buildVolume.x / 2, 0, buildVolume.y / 2);
+    this.controls.update();
+  }
+
+  setIsometricView() {
+    this.resetCameraWithBetterView();
+  }
+
+  // Command History
+  filterCommandHistory(event: any) {
+    // Implement table filtering
+    const value = event.target.value;
+    // This would typically filter the table data
+    console.log('Filtering commands:', value);
+  }
+
+  exportCommandHistory() {
+    const data = this.commandHistory();
     const csvContent = [
-      'Index,Command,Raw Line,Execution Time,Cumulative Time,Timestamp',
-      ...history.map(
+      'Index,Command,Raw Line,Execution Time,Cumulative Time',
+      ...data.map(
         (item) =>
-          `${item.index},${item.command.command},"${item.command.rawLine}",${
-            item.executionTime
-          },${item.cumulativeTime},${item.timestamp.toISOString()}`
+          `${item.index + 1},"${item.command.command}","${
+            item.command.rawLine
+          }",${item.executionTime},${item.cumulativeTime}`
       ),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-
+    const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'gcode-command-history.csv';
     a.click();
-
-    URL.revokeObjectURL(url);
+    window.URL.revokeObjectURL(url);
   }
 
-  private handleError(error: string): void {
-    console.error('Simulator Error:', error);
-    this._errorMessage.set(error);
-    this.simulationError.emit(error);
+  // Utility Methods
+  getStateSeverity(
+    state: SimulationState
+  ): 'success' | 'info' | 'warning' | 'danger' | 'secondary' {
+    switch (state) {
+      case SimulationState.RUNNING:
+        return 'success';
+      case SimulationState.PAUSED:
+        return 'warning';
+      case SimulationState.COMPLETED:
+        return 'info';
+      case SimulationState.ERROR:
+        return 'danger';
+      default:
+        return 'secondary';
+    }
   }
 
-  private emitStateChange(type: SimulatorEvent['type']): void {
-    const event: SimulatorEvent = {
-      type,
-      data: this.printerState(),
-      timestamp: new Date(),
+  getCommandSeverity(
+    command: string
+  ): 'success' | 'info' | 'warning' | 'danger' | 'secondary' {
+    if (command.startsWith('G0') || command.startsWith('G1')) return 'success';
+    if (command.startsWith('G2') || command.startsWith('G3')) return 'info';
+    if (command.startsWith('M')) return 'warning';
+    return 'secondary';
+  }
+
+  formatTime(seconds: number): string {
+    if (seconds < 60) {
+      return `${seconds.toFixed(0)}s`;
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds.toFixed(0)}s`;
+  }
+
+  /**
+   * Metodo utility per diagnostica
+   */
+  getDiagnosticInfo(): any {
+    return {
+      simulation: {
+        state: this.simulationState(),
+        progress: this.printerState().printProgress,
+        currentCommand: this.printerState().currentCommandIndex,
+        totalCommands: this.printerState().totalCommands,
+      },
+      performance: {
+        fps: this.getCurrentFPS(),
+        pathObjects: this.getTotalPathObjects(),
+        maxPathPoints: this.maxPathPoints(),
+        batchSize: this.batchUpdateSize(),
+      },
+      settings: {
+        animationSpeed: this.animationSpeedValue(),
+        curveResolution: this.curveResolution(),
+        showBezierControls: this.showBezierControls(),
+      },
     };
-    this.stateChange.emit(event);
   }
 
-  private cleanup(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      this.simulatorService.loadGCodeFile(file);
+    }
+  }
 
-    // Cleanup services
-    this.streamingService.dispose();
-    this.simulatorService.dispose();
-
-    // Remove event listeners
-    window.removeEventListener('resize', () => {});
+  updateBufferSize(size: number): void {
+    this.bufferSize = size;
+    this.simulatorService.setBufferSize(size);
   }
 }

@@ -1,1387 +1,1976 @@
-// src/app/printer-simulator/services/slicing-simulator.service.ts
-
-import {
-  computed,
-  DestroyRef,
-  inject,
-  Injectable,
-  signal,
-} from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  BehaviorSubject,
-  catchError,
-  combineLatest,
-  distinctUntilChanged,
-  EMPTY,
-  filter,
-  fromEvent,
-  map,
-  Observable,
-  shareReplay,
-  Subject,
-  switchMap,
-  tap,
-  throwError,
-  timer,
-} from 'rxjs';
+import { computed, effect, Injectable, signal } from '@angular/core';
 import * as THREE from 'three';
-import {
-  CommandExecutionInfo,
-  createSimulatorError,
-  createVector3D,
-  DEFAULT_VIEWPORT_SETTINGS,
-  GCodeCommand,
-  getCommandType,
-  isExtrusionCommand,
-  isMovementCommand,
-  PathSegment,
-  PERFORMANCE_THRESHOLDS,
-  PerformanceMetrics,
-  PrinterState,
-  SimulationState,
-  SimulatorError,
-  Vector3D,
-  ViewportSettings,
-} from '../../../models/simulator/simulator.models';
 
-import { StreamingCommandService } from '../../../services/streaming-service';
-
-interface SimulatorConfig {
-  readonly enablePerformanceMonitoring: boolean;
-  readonly enableAutomaticQualityAdjustment: boolean;
-  readonly maxMemoryUsage: number; // MB
-  readonly targetFPS: number;
-  readonly pathOptimization: boolean;
-  readonly realTimeUpdates: boolean;
+interface BatchedPath {
+  points: THREE.Vector3[];
+  colors: THREE.Color[];
+  isExtrusion: boolean;
 }
 
-interface PathRenderingContext {
-  readonly geometry: THREE.BufferGeometry;
-  readonly material: THREE.Material;
-  readonly mesh: THREE.Mesh;
-  readonly vertexCount: number;
-  readonly lastUpdate: number;
+// Types
+export interface GCodeCommand {
+  command: string;
+  x?: number;
+  y?: number;
+  z?: number;
+  e?: number;
+  f?: number;
+  i?: number; // Arc center X offset
+  j?: number; // Arc center Y offset
+  k?: number; // Arc center Z offset
+  r?: number; // Arc radius
+  p?: number; // Dwell time or parameter
+  s?: number; // Spindle speed or parameter
+  t?: number; // Tool number
+
+  a?: number; // A axis (rotational)
+  b?: number; // B axis (rotational)
+  c?: number; // C axis (rotational)
+  u?: number; // U axis (additional linear)
+  v?: number; // V axis (additional linear)
+  w?: number; // W axis (additional linear)
+
+  // Parametri per Bezier e NURBS
+  q?: number; // Bezier control point
+  controlPoints?: Array<{ x: number; y: number; z?: number }>; // Punti controllo
+
+  lineNumber: number;
+  rawLine: string;
 }
 
-interface QualitySettings {
-  readonly maxPathPoints: number;
-  readonly enableShadows: boolean;
-  readonly antialiasing: boolean;
-  readonly pathResolution: number;
-  readonly updateFrequency: number;
+export interface PrinterPosition {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface PrinterState {
+  position: PrinterPosition;
+  extruderPosition: number;
+  feedRate: number;
+  temperature: number;
+  bedTemperature: number;
+  fanSpeed: number;
+  absolutePositioning: boolean;
+  absoluteExtrusion: boolean;
+  currentLayer: number;
+  totalLayers: number;
+  printProgress: number;
+  isExtruding: boolean;
+  currentCommandIndex: number;
+  totalCommands: number;
+  executionTime: number;
+  estimatedTimeRemaining: number;
+}
+
+export interface PathSegment {
+  startPoint: THREE.Vector3;
+  endPoint: THREE.Vector3;
+  extrusionAmount: number;
+  isExtrusion: boolean;
+  isTravel: boolean;
+  isArc: boolean;
+  isBezier?: boolean;
+  isNurbs?: boolean;
+  arcCenter?: THREE.Vector3;
+  arcRadius?: number;
+  segments?: THREE.Vector3[];
+  controlPoints?: THREE.Vector3[];
+}
+
+export enum SimulationState {
+  IDLE = 'idle',
+  RUNNING = 'running',
+  PAUSED = 'paused',
+  COMPLETED = 'completed',
+  ERROR = 'error',
 }
 
 @Injectable({
   providedIn: 'root',
 })
 export class GCodeSimulatorService {
-  private readonly destroyRef = inject(DestroyRef);
-  private readonly streamingService = inject(StreamingCommandService);
+  private batchedExtrusionPath: BatchedPath = {
+    points: [],
+    colors: [],
+    isExtrusion: true,
+  };
+  private batchedTravelPath: BatchedPath = {
+    points: [],
+    colors: [],
+    isExtrusion: false,
+  };
+  private extrusionMesh: THREE.Line | null = null;
+  private travelMesh: THREE.Line | null = null;
+  private maxPathPoints = 50000; // Limite punti per evitare lag
+  private pathBatchSize = 100; // Ricostruisce mesh ogni N comandi
 
-  // Configuration
-  private readonly config = signal<SimulatorConfig>({
-    enablePerformanceMonitoring: true,
-    enableAutomaticQualityAdjustment: true,
-    maxMemoryUsage: 512, // MB
-    targetFPS: 30,
-    pathOptimization: true,
-    realTimeUpdates: true,
-  });
+  private baseCommandInterval = 100; // Intervallo base in ms
+  private lastSpeedUpdate = 0;
 
-  // Core state management
+  private showBezierControlPoints = false;
+  private bezierControlPointsMeshes: THREE.Mesh[] = [];
+  private curveResolution = 20;
+
+  // Core Signals
+  private readonly _commands = signal<GCodeCommand[]>([]);
+  private readonly _currentCommandIndex = signal<number>(0);
   private readonly _simulationState = signal<SimulationState>(
     SimulationState.IDLE
   );
-  private readonly _printerState = signal<PrinterState>({
-    position: createVector3D(0, 0, 0),
-    extruderPosition: 0,
-    feedRate: 1500,
-    temperature: 0,
-    bedTemperature: 0,
-    fanSpeed: 0,
-    absolutePositioning: true,
-    absoluteExtrusion: true,
-    currentLayer: 0,
-    totalLayers: 0,
-    printProgress: 0,
-    isExtruding: false,
-    currentCommandIndex: 0,
-    totalCommands: 0,
-    executionTime: 0,
-    estimatedTimeRemaining: 0,
+  private readonly _printerPosition = signal<PrinterPosition>({
+    x: 0,
+    y: 0,
+    z: 0,
   });
+  private readonly _extruderPosition = signal<number>(0);
+  private readonly _feedRate = signal<number>(1500);
+  private readonly _temperature = signal<number>(0);
+  private readonly _bedTemperature = signal<number>(0);
+  private readonly _fanSpeed = signal<number>(0);
+  private readonly _absolutePositioning = signal<boolean>(true);
+  private readonly _absoluteExtrusion = signal<boolean>(true);
+  private readonly _isExtruding = signal<boolean>(false);
+  private readonly _executionTime = signal<number>(0);
+  private readonly _errorMessage = signal<string>('');
+  private readonly _animationSpeed = signal<number>(1.0);
 
-  private readonly _viewportSettings = signal<ViewportSettings>(
-    DEFAULT_VIEWPORT_SETTINGS
-  );
-  private readonly _performanceMetrics = signal<PerformanceMetrics>({
-    fps: 60,
-    pathObjects: 0,
-    memoryUsage: 0,
-    renderTime: 0,
-    commandProcessingRate: 0,
-    bufferUtilization: 0,
-  });
+  // Path tracking
+  private readonly _pathSegments = signal<PathSegment[]>([]);
+  private readonly _currentPath = signal<PathSegment | null>(null);
 
-  // Three.js scene management
-  private scene: THREE.Scene = new THREE.Scene();
-  private pathRenderingContexts: Map<string, PathRenderingContext> = new Map();
-  private buildPlate: THREE.Mesh | null = null;
-  private nozzleIndicator: THREE.Mesh | null = null;
+  // Three.js objects
+  private scene: THREE.Scene;
+  private extrudedPaths: THREE.Group;
+  private travelPaths: THREE.Group;
+  private nozzlePosition: THREE.Group;
+  private buildPlate: THREE.Mesh;
+  private animationId: number | null = null;
+  private startTime = 0;
+  private lastUpdateTime = 0;
+  private commandStartTime = 0;
 
-  // Command execution
-  private commandHistory: CommandExecutionInfo[] = [];
-  private pathSegments: PathSegment[] = [];
-  private executionTimer: number | null = null;
-  private isExecuting = false;
-
-  // Error handling
-  private readonly errorSubject = new Subject<SimulatorError>();
-  private readonly warningSubject = new Subject<string>();
-
-  // Performance tracking
-  private performanceHistory: number[] = [];
-  private lastPerformanceCheck = Date.now();
-  private frameCounter = 0;
-  private renderTimeHistory: number[] = [];
-
-  // Event streams
-  private readonly stateChangeSubject = new BehaviorSubject<SimulationState>(
-    SimulationState.IDLE
-  );
-  private readonly commandExecutedSubject = new Subject<CommandExecutionInfo>();
-  private readonly layerChangeSubject = new Subject<{
-    from: number;
-    to: number;
-  }>();
-  private readonly progressUpdateSubject = new Subject<number>();
-
-  // Public readonly state
+  // Computed signals
+  readonly commands = this._commands.asReadonly();
+  readonly currentCommandIndex = this._currentCommandIndex.asReadonly();
   readonly simulationState = this._simulationState.asReadonly();
-  readonly printerState = this._printerState.asReadonly();
-  readonly viewportSettings = this._viewportSettings.asReadonly();
-  readonly performanceMetrics = this._performanceMetrics.asReadonly();
+  readonly printerPosition = this._printerPosition.asReadonly();
+  readonly extruderPosition = this._extruderPosition.asReadonly();
+  readonly feedRate = this._feedRate.asReadonly();
+  readonly temperature = this._temperature.asReadonly();
+  readonly bedTemperature = this._bedTemperature.asReadonly();
+  readonly fanSpeed = this._fanSpeed.asReadonly();
+  readonly absolutePositioning = this._absolutePositioning.asReadonly();
+  readonly absoluteExtrusion = this._absoluteExtrusion.asReadonly();
+  readonly isExtruding = this._isExtruding.asReadonly();
+  readonly executionTime = this._executionTime.asReadonly();
+  readonly errorMessage = this._errorMessage.asReadonly();
+  readonly pathSegments = this._pathSegments.asReadonly();
+  readonly currentPath = this._currentPath.asReadonly();
+  readonly animationSpeed = this._animationSpeed.asReadonly();
 
-  // Computed properties
-  readonly isSimulationActive = computed(
-    () => this.simulationState() === SimulationState.RUNNING
-  );
-
-  readonly canExecute = computed(() => {
-    const state = this.simulationState();
-    return (
-      state === SimulationState.IDLE ||
-      state === SimulationState.PAUSED ||
-      state === SimulationState.COMPLETED
-    );
-  });
-
-  readonly executionProgress = computed(() => {
-    const current = this.printerState().currentCommandIndex;
-    const total = this.printerState().totalCommands;
+  // Computed state
+  readonly totalCommands = computed(() => this._commands().length);
+  readonly printProgress = computed(() => {
+    const total = this.totalCommands();
+    const current = this._currentCommandIndex();
     return total > 0 ? (current / total) * 100 : 0;
   });
 
-  readonly memoryPressure = computed(() => {
-    const usage = this.performanceMetrics().memoryUsage;
-    const maxUsage = this.config().maxMemoryUsage * 1024 * 1024; // Convert MB to bytes
-    return usage / maxUsage;
+  readonly currentLayer = computed(() => {
+    const pos = this._printerPosition();
+    return Math.max(1, Math.floor(pos.z / 0.2) + 1); // Assuming 0.2mm layer height
   });
 
-  readonly isPerformanceHealthy = computed(() => {
-    const metrics = this.performanceMetrics();
-    return (
-      metrics.fps >= this.config().targetFPS &&
-      metrics.renderTime < PERFORMANCE_THRESHOLDS.RENDER_TIME.ACCEPTABLE &&
-      this.memoryPressure() < 0.8
-    );
+  readonly totalLayers = computed(() => {
+    const commands = this._commands();
+    const uniqueZ = new Set<number>();
+    commands.forEach((cmd) => {
+      if (cmd.z !== undefined) {
+        uniqueZ.add(Math.round(cmd.z * 100) / 100);
+      }
+    });
+    return Math.max(1, uniqueZ.size);
   });
 
-  // Public observables
-  readonly stateChanges$ = this.stateChangeSubject
-    .asObservable()
-    .pipe(distinctUntilChanged(), shareReplay(1));
+  readonly estimatedTimeRemaining = computed(() => {
+    const total = this.totalCommands();
+    const current = this._currentCommandIndex();
+    const elapsed = this._executionTime();
 
-  readonly commandExecuted$ = this.commandExecutedSubject.asObservable();
-  readonly layerChanges$ = this.layerChangeSubject.asObservable();
-  readonly progressUpdates$ = this.progressUpdateSubject.asObservable();
-  readonly errors$ = this.errorSubject.asObservable();
-  readonly warnings$ = this.warningSubject.asObservable();
+    if (current === 0 || elapsed === 0) return 0;
 
-  // Combined state stream
-  readonly simulatorState$ = combineLatest([
-    this.stateChanges$,
-    this.progressUpdates$.pipe(startWith(0)),
-    timer(0, 1000).pipe(map(() => this.performanceMetrics())),
-  ]).pipe(
-    map(([state, progress, metrics]) => ({
-      simulationState: state,
-      progress,
-      performanceMetrics: metrics,
-      printerState: this.printerState(),
-    })),
-    shareReplay(1)
-  );
+    const avgTimePerCommand = elapsed / current;
+    const remaining = total - current;
+    return remaining * avgTimePerCommand;
+  });
 
+  readonly fullState = computed<PrinterState>(() => ({
+    position: this._printerPosition(),
+    extruderPosition: this._extruderPosition(),
+    feedRate: this._feedRate(),
+    temperature: this._temperature(),
+    bedTemperature: this._bedTemperature(),
+    fanSpeed: this._fanSpeed(),
+    absolutePositioning: this._absolutePositioning(),
+    absoluteExtrusion: this._absoluteExtrusion(),
+    currentLayer: this.currentLayer(),
+    totalLayers: this.totalLayers(),
+    printProgress: this.printProgress(),
+    isExtruding: this._isExtruding(),
+    currentCommandIndex: this._currentCommandIndex(),
+    totalCommands: this.totalCommands(),
+    executionTime: this._executionTime(),
+    estimatedTimeRemaining: this.estimatedTimeRemaining(),
+  }));
+
+  // G-code patterns for parsing
+  private readonly GCODE_PATTERNS = {
+    command: /^([GM]\d+)/,
+    x: /X([-+]?\d*\.?\d+)/,
+    y: /Y([-+]?\d*\.?\d+)/,
+    z: /Z([-+]?\d*\.?\d+)/,
+    e: /E([-+]?\d*\.?\d+)/,
+    f: /F(\d*\.?\d+)/,
+    i: /I([-+]?\d*\.?\d+)/,
+    j: /J([-+]?\d*\.?\d+)/,
+    k: /K([-+]?\d*\.?\d+)/,
+    r: /R([-+]?\d*\.?\d+)/,
+    p: /P(\d*\.?\d+)/,
+    s: /S(\d*\.?\d+)/,
+    t: /T(\d+)/,
+    a: /A([-+]?\d*\.?\d+)/,
+    b: /B([-+]?\d*\.?\d+)/,
+    c: /C([-+]?\d*\.?\d+)/,
+    u: /U([-+]?\d*\.?\d+)/,
+    v: /V([-+]?\d*\.?\d+)/,
+    w: /W([-+]?\d*\.?\d+)/,
+    q: /Q([-+]?\d*\.?\d+)/,
+  };
+
+  /**
+   * Aggiunge un listener per monitorare i cambiamenti dello stato del simulatore
+   */
   constructor() {
     this.initializeScene();
-    this.setupPerformanceMonitoring();
-    this.setupStreamingIntegration();
-    this.setupErrorHandling();
-    this.setupMemoryManagement();
+    this.setupEffects();
+
+    // Listener per riprendere il caricamento quando lo stato cambia a RUNNING
+    effect(() => {
+      if (this._simulationState() === SimulationState.RUNNING) {
+        console.debug('Lo stato è passato a RUNNING, riprendo il caricamento.');
+        this.processBuffer();
+      }
+    });
   }
 
-  // Public API Methods
+  private initializeScene(): void {
+    this.scene = new THREE.Scene();
+    this.extrudedPaths = new THREE.Group();
+    this.travelPaths = new THREE.Group();
 
-  /**
-   * Load G-code from text with comprehensive validation and preprocessing
-   */
-  async loadGCodeFromText(gCodeText: string): Promise<void> {
-    try {
-      this.updateSimulationState(SimulationState.LOADING);
+    this.scene.add(this.extrudedPaths);
+    this.scene.add(this.travelPaths);
 
-      // Validate input
-      if (!gCodeText?.trim()) {
-        throw new Error('Empty G-code provided');
-      }
+    // Inizializza le mesh batched
+    this.initializeBatchedMeshes();
 
-      // Clear previous state
-      this.resetSimulation();
+    // Create enhanced nozzle indicator
+    this.createNozzle();
+    // Create build plate
+    this.createBuildPlate();
+    // Add coordinate system helper
+    const axesHelper = new THREE.AxesHelper(30);
+    axesHelper.position.set(0, 0.1, 0);
+    this.scene.add(axesHelper);
+    // Add grid helper
+    const gridHelper = new THREE.GridHelper(300, 30, 0x444444, 0x222222);
+    gridHelper.rotateX(Math.PI / 2);
+    this.scene.add(gridHelper);
+  }
 
-      // Use streaming service for efficient loading
-      await this.streamingService.streamCommands(gCodeText);
+  private initializeBatchedMeshes(): void {
+    // Crea geometrie con buffer per performance ottimali
+    const extrusionGeometry = new THREE.BufferGeometry();
+    const travelGeometry = new THREE.BufferGeometry();
 
-      // Process loaded commands
-      await this.processLoadedCommands();
+    // Materiali ottimizzati
+    const extrusionMaterial = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      linewidth: 2,
+    });
 
-      this.updateSimulationState(SimulationState.IDLE);
-    } catch (error) {
-      this.handleError('parsing', `Failed to load G-code: ${error}`, error);
-      this.updateSimulationState(SimulationState.ERROR);
-    }
+    const travelMaterial = new THREE.LineBasicMaterial({
+      color: 0x888888,
+      transparent: true,
+      opacity: 0.3,
+      linewidth: 1,
+    });
+
+    this.extrusionMesh = new THREE.Line(extrusionGeometry, extrusionMaterial);
+    this.travelMesh = new THREE.Line(travelGeometry, travelMaterial);
+
+    this.extrudedPaths.add(this.extrusionMesh);
+    this.travelPaths.add(this.travelMesh);
+  }
+
+  private createNozzle(): void {
+    // Create a more detailed nozzle assembly
+    const nozzleGroup = new THREE.Group();
+
+    // Nozzle tip (cone)
+    const nozzleTipGeometry = new THREE.ConeGeometry(0.8, 3, 8);
+    const nozzleTipMaterial = new THREE.MeshLambertMaterial({
+      color: 0x666666,
+      transparent: true,
+      opacity: 0.9,
+    });
+    const nozzleTip = new THREE.Mesh(nozzleTipGeometry, nozzleTipMaterial);
+    nozzleTip.position.y = 1.5;
+    nozzleGroup.add(nozzleTip);
+
+    // Heater block (cylinder)
+    const heaterGeometry = new THREE.CylinderGeometry(2, 2, 4, 8);
+    const heaterMaterial = new THREE.MeshLambertMaterial({
+      color: 0x444444,
+      transparent: true,
+      opacity: 0.8,
+    });
+    const heater = new THREE.Mesh(heaterGeometry, heaterMaterial);
+    heater.position.y = 5;
+    nozzleGroup.add(heater);
+
+    // Cooling fan (torus)
+    const fanGeometry = new THREE.TorusGeometry(3, 0.5, 8, 16);
+    const fanMaterial = new THREE.MeshLambertMaterial({
+      color: 0x333333,
+      transparent: true,
+      opacity: 0.7,
+    });
+    const fan = new THREE.Mesh(fanGeometry, fanMaterial);
+    fan.position.y = 8;
+    fan.rotation.x = Math.PI / 2;
+    nozzleGroup.add(fan);
+
+    // Add glow effect when extruding
+    const glowGeometry = new THREE.SphereGeometry(1.2, 16, 16);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff4444,
+      transparent: true,
+      opacity: 0,
+    });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    glow.position.y = 0.5;
+    nozzleGroup.add(glow);
+
+    this.nozzlePosition = nozzleGroup;
+    this.scene.add(this.nozzlePosition);
   }
 
   /**
-   * Load G-code from file with progress tracking
+   * Mostra/nasconde i punti di controllo delle curve Bezier
    */
-  async loadGCodeFromFile(file: File): Promise<void> {
-    try {
-      this.updateSimulationState(SimulationState.LOADING);
+  setBezierControlsVisible(visible: boolean): void {
+    this.showBezierControlPoints = visible;
 
-      // Validate file
-      if (!file || file.size === 0) {
-        throw new Error('Invalid file provided');
-      }
-
-      if (file.size > 100 * 1024 * 1024) {
-        // 100MB limit
-        throw new Error('File too large. Maximum size is 100MB');
-      }
-
-      this.resetSimulation();
-
-      // Use streaming service for file processing
-      await this.streamingService.streamFromFile(file);
-
-      await this.processLoadedCommands();
-
-      this.updateSimulationState(SimulationState.IDLE);
-    } catch (error) {
-      this.handleError('parsing', `Failed to load file: ${error}`, error);
-      this.updateSimulationState(SimulationState.ERROR);
-    }
+    // Mostra/nasconde tutti i punti di controllo esistenti
+    this.bezierControlPointsMeshes.forEach((mesh) => {
+      mesh.visible = visible;
+    });
   }
 
   /**
-   * Start simulation execution with advanced control
+   * Imposta il limite massimo di punti path per ottimizzare le performance
    */
-  startSimulation(): Observable<CommandExecutionInfo> {
-    if (!this.canExecute()) {
-      return throwError(
-        () => new Error('Cannot start simulation in current state')
-      );
+  setMaxPathPoints(maxPoints: number): void {
+    this.maxPathPoints = Math.max(1000, Math.min(100000, maxPoints));
+
+    // Applica il nuovo limite ai path esistenti
+    if (this.batchedExtrusionPath.points.length > this.maxPathPoints) {
+      this.trimPathBatch(this.batchedExtrusionPath);
+      this.updateBatchedMeshes();
     }
 
-    this.updateSimulationState(SimulationState.RUNNING);
-    this.isExecuting = true;
+    if (this.batchedTravelPath.points.length > this.maxPathPoints) {
+      this.trimPathBatch(this.batchedTravelPath);
+      this.updateBatchedMeshes();
+    }
 
-    return this.streamingService.startProcessing().pipe(
-      switchMap((command) => this.executeCommand(command)),
-      tap((executionInfo) => {
-        this.commandExecutedSubject.next(executionInfo);
-        this.updateProgress(executionInfo);
-      }),
-      catchError((error) => {
-        this.handleExecutionError(error);
-        return EMPTY;
-      }),
-      takeUntilDestroyed(this.destroyRef)
+    console.debug(`Max path points set to: ${this.maxPathPoints}`);
+  }
+
+  /**
+   * Imposta la dimensione del batch per aggiornamenti delle mesh
+   */
+  setBatchSize(batchSize: number): void {
+    this.pathBatchSize = Math.max(10, Math.min(1000, batchSize));
+    console.debug(`Batch size set to: ${this.pathBatchSize}`);
+  }
+
+  /**
+   * Imposta la risoluzione delle curve (numero di segmenti)
+   */
+  setCurveResolution(resolution: number): void {
+    this.curveResolution = Math.max(5, Math.min(100, resolution));
+    console.debug(`Curve resolution set to: ${this.curveResolution}`);
+  }
+
+  /**
+   * Visualizza punti di controllo per curve Bezier (versione migliorata)
+   */
+  private visualizeControlPoints(
+    controlPoints: THREE.Vector3[],
+    curveType: 'bezier' | 'quadratic' = 'bezier'
+  ): void {
+    if (!this.showBezierControlPoints) return;
+
+    controlPoints.forEach((point, index) => {
+      const geometry = new THREE.SphereGeometry(0.8, 12, 12);
+
+      // Colori diversi per diversi tipi di punti di controllo
+      let color: number;
+      switch (curveType) {
+        case 'quadratic':
+          color = index === 0 ? 0x00ff00 : 0xff00ff; // Verde per primo, magenta per controllo
+          break;
+        case 'bezier':
+        default:
+          color = index === 0 ? 0x00ff00 : index === 1 ? 0x0000ff : 0xff0000; // Verde, blu, rosso
+          break;
+      }
+
+      const material = new THREE.MeshLambertMaterial({
+        color: color,
+        transparent: true,
+        opacity: 0.8,
+        emissive: color,
+        emissiveIntensity: 0.2,
+      });
+
+      const sphere = new THREE.Mesh(geometry, material);
+      sphere.position.copy(point);
+
+      // Aggiungi un piccolo wireframe per maggiore visibilità
+      const wireframeGeometry = new THREE.SphereGeometry(0.9, 8, 8);
+      const wireframeMaterial = new THREE.MeshBasicMaterial({
+        color: color,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.5,
+      });
+      const wireframe = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
+      wireframe.position.copy(point);
+
+      // Aggiungi etichetta per debug
+      if (this.showBezierControlPoints) {
+        const label = this.createControlPointLabel(index, curveType);
+        label.position.copy(point);
+        label.position.y += 2;
+        this.scene.add(label);
+        this.bezierControlPointsMeshes.push(label);
+      }
+
+      this.scene.add(sphere);
+      this.scene.add(wireframe);
+      this.bezierControlPointsMeshes.push(sphere, wireframe);
+    });
+  }
+
+  /**
+   * Crea etichetta per punto di controllo
+   */
+  private createControlPointLabel(
+    index: number,
+    curveType: string
+  ): THREE.Mesh {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d')!;
+    canvas.width = 64;
+    canvas.height = 32;
+
+    context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    context.fillStyle = 'white';
+    context.font = '12px Arial';
+    context.textAlign = 'center';
+    context.fillText(
+      `${curveType === 'quadratic' ? 'Q' : 'C'}${index}`,
+      canvas.width / 2,
+      canvas.height / 2 + 4
     );
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      alphaTest: 0.1,
+    });
+
+    const geometry = new THREE.PlaneGeometry(3, 1.5);
+    const label = new THREE.Mesh(geometry, material);
+    label.renderOrder = 1000; // Sempre in primo piano
+
+    return label;
   }
 
   /**
-   * Pause simulation with state preservation
+   * Pulisce tutti i punti di controllo visualizzati
    */
-  pauseSimulation(): void {
-    if (this.simulationState() !== SimulationState.RUNNING) return;
+  private clearBezierControlPoints(): void {
+    this.bezierControlPointsMeshes.forEach((mesh) => {
+      this.scene.remove(mesh);
+      mesh.geometry.dispose();
+      if (mesh.material instanceof THREE.Material) {
+        mesh.material.dispose();
+      }
+      if (mesh.material instanceof Array) {
+        mesh.material.forEach((mat) => mat.dispose());
+      }
+    });
+    this.bezierControlPointsMeshes = [];
+  }
 
-    this.streamingService.pauseProcessing();
-    this.updateSimulationState(SimulationState.PAUSED);
-    this.isExecuting = false;
+  /**
+   * Genera punti per curva Bezier cubica (versione migliorata con risoluzione configurabile)
+   */
+  private generateBezierPoints(
+    start: THREE.Vector3,
+    control1: THREE.Vector3,
+    control2: THREE.Vector3,
+    end: THREE.Vector3
+  ): THREE.Vector3[] {
+    const points: THREE.Vector3[] = [];
+    const numSegments = this.curveResolution;
 
-    if (this.executionTimer) {
-      clearTimeout(this.executionTimer);
-      this.executionTimer = null;
+    for (let i = 0; i <= numSegments; i++) {
+      const t = i / numSegments;
+      const point = this.cubicBezierPoint(start, control1, control2, end, t);
+      points.push(point);
+    }
+
+    return points;
+  }
+
+  /**
+   * Genera punti per curva Bezier quadratica (versione migliorata)
+   */
+  private generateQuadraticBezierPoints(
+    start: THREE.Vector3,
+    control: THREE.Vector3,
+    end: THREE.Vector3
+  ): THREE.Vector3[] {
+    const points: THREE.Vector3[] = [];
+    const numSegments = Math.floor(this.curveResolution * 0.75); // Meno segmenti per quadratiche
+
+    for (let i = 0; i <= numSegments; i++) {
+      const t = i / numSegments;
+      const point = this.quadraticBezierPoint(start, control, end, t);
+      points.push(point);
+    }
+
+    return points;
+  }
+
+  private createBuildPlate(): void {
+    // Create build plate with texture
+    const plateGeometry = new THREE.PlaneGeometry(200, 200);
+    const plateMaterial = new THREE.MeshLambertMaterial({
+      color: 0x888888,
+      transparent: true,
+      opacity: 0.8,
+    });
+
+    this.buildPlate = new THREE.Mesh(plateGeometry, plateMaterial);
+    this.buildPlate.rotation.x = -Math.PI / 2;
+    this.buildPlate.position.y = -0.1;
+    this.buildPlate.receiveShadow = true;
+
+    // Add build plate border
+    const borderGeometry = new THREE.EdgesGeometry(plateGeometry);
+    const borderMaterial = new THREE.LineBasicMaterial({
+      color: 0x444444,
+      linewidth: 2,
+    });
+    const border = new THREE.LineSegments(borderGeometry, borderMaterial);
+    border.rotation.x = -Math.PI / 2;
+    border.position.y = 0;
+
+    this.scene.add(this.buildPlate);
+    this.scene.add(border);
+  }
+
+  private setupEffects(): void {
+    // Update nozzle position and glow effect
+    effect(() => {
+      const pos = this._printerPosition();
+      const isExtruding = this._isExtruding();
+
+      this.nozzlePosition.position.set(pos.x, pos.z + 8, pos.y);
+
+      // Update glow effect based on extrusion
+      const glowMesh = this.nozzlePosition.children.find(
+        (child) =>
+          child instanceof THREE.Mesh &&
+          (child.material as THREE.MeshBasicMaterial).color.getHex() ===
+            0xff4444
+      ) as THREE.Mesh;
+
+      if (glowMesh && glowMesh.material instanceof THREE.MeshBasicMaterial) {
+        glowMesh.material.opacity = isExtruding ? 0.6 : 0;
+        glowMesh.scale.setScalar(
+          isExtruding ? 1 + Math.sin(Date.now() * 0.01) * 0.2 : 1
+        );
+      }
+    });
+
+    // Clear error after 5 seconds
+    effect(() => {
+      const error = this._errorMessage();
+      if (error) {
+        setTimeout(() => {
+          if (this._errorMessage() === error) {
+            this._errorMessage.set('');
+          }
+        }, 5000);
+      }
+    });
+  }
+
+  /**
+   * Set animation speed (0.1 to 1000)
+   */
+  setAnimationSpeed(speed: number): void {
+    const newSpeed = Math.max(0.1, Math.min(1000, speed));
+    this._animationSpeed.set(newSpeed);
+    this.lastSpeedUpdate = performance.now();
+  }
+
+  /**
+   * Load G-code commands from array of strings
+   */
+  loadCommands(gcodeLines: string[]): void {
+    try {
+      const commands: GCodeCommand[] = [];
+
+      gcodeLines.forEach((line, index) => {
+        const command = this.parseLine(line.trim(), index + 1);
+        if (command) {
+          commands.push(command);
+        }
+      });
+
+      this._commands.set(commands);
+      this.reset();
+      this._errorMessage.set('');
+    } catch (error) {
+      this._errorMessage.set(`Failed to load commands: ${error}`);
     }
   }
 
   /**
-   * Resume simulation from current position
+   * Corregge il metodo parseLine per garantire che i comandi siano interpretati correttamente
    */
-  resumeSimulation(): Observable<CommandExecutionInfo> {
-    if (this.simulationState() !== SimulationState.PAUSED) {
-      return throwError(() => new Error('Simulation is not paused'));
+  private parseLine(line: string, lineNumber: number): GCodeCommand | null {
+    const cleanLine = line.split(';')[0].trim().toUpperCase(); // Rimuove commenti e spazi
+    if (!cleanLine) return null; // Ignora righe vuote
+
+    const commandMatch = this.GCODE_PATTERNS.command.exec(cleanLine);
+    if (!commandMatch) {
+      console.warn(`Comando non riconosciuto alla riga ${lineNumber}: ${line}`);
+      return null; // Logga comandi non riconosciuti
     }
 
-    const currentIndex = this.printerState().currentCommandIndex;
-    return this.streamingService.resumeProcessing(currentIndex).pipe(
-      switchMap((command) => this.executeCommand(command)),
-      tap((executionInfo) => {
-        this.commandExecutedSubject.next(executionInfo);
-        this.updateProgress(executionInfo);
-      }),
-      catchError((error) => {
-        this.handleExecutionError(error);
-        return EMPTY;
-      })
-    );
+    const command: GCodeCommand = {
+      command: commandMatch[1],
+      lineNumber,
+      rawLine: line,
+    };
+
+    // Analizza tutti i parametri definiti nei pattern
+    Object.entries(this.GCODE_PATTERNS).forEach(([key, pattern]) => {
+      if (key === 'command') return;
+
+      const match = pattern.exec(cleanLine);
+      if (match) {
+        const value = match[1];
+        (command as any)[key] =
+          key === 't' ? parseInt(value) : parseFloat(value);
+      }
+    });
+
+    return command;
   }
 
   /**
-   * Stop simulation with cleanup
+   * Start simulation
    */
-  stopSimulation(): void {
-    this.streamingService.pauseProcessing();
-    this.updateSimulationState(SimulationState.IDLE);
-    this.isExecuting = false;
+  start(): void {
+    if (this._commands().length === 0 && this.fileReader) {
+      this._simulationState.set(SimulationState.RUNNING);
+      this.commandStartTime = performance.now();
+      this.animate();
+    } else if (this._commands().length > 0) {
+      if (this._simulationState() === SimulationState.COMPLETED) {
+        this.reset();
+      }
 
-    if (this.executionTimer) {
-      clearTimeout(this.executionTimer);
-      this.executionTimer = null;
+      this._simulationState.set(SimulationState.RUNNING);
+      this.startTime = performance.now();
+      this.lastUpdateTime = this.startTime;
+      this.commandStartTime = this.startTime;
+      this.animate();
+    } else {
+      this._errorMessage.set('No commands loaded');
     }
+  }
 
-    this.clearVisualization();
+  /**
+   * Pause/Resume simulation
+   */
+  pause(): void {
+    const currentState = this._simulationState();
+    if (currentState === SimulationState.RUNNING) {
+      this._simulationState.set(SimulationState.PAUSED);
+      if (this.animationId) {
+        cancelAnimationFrame(this.animationId);
+        this.animationId = null;
+      }
+    } else if (currentState === SimulationState.PAUSED) {
+      this._simulationState.set(SimulationState.RUNNING);
+      this.lastUpdateTime = performance.now();
+      this.animate();
+    }
+  }
+
+  /**
+   * Stop simulation
+   */
+  stop(): void {
+    this._simulationState.set(SimulationState.IDLE);
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
   }
 
   /**
    * Reset simulation to beginning
    */
-  resetSimulation(): void {
-    this.stopSimulation();
+  reset(): void {
+    this.stop();
+    this._currentCommandIndex.set(0);
+    this._printerPosition.set({ x: 0, y: 0, z: 0 });
+    this._extruderPosition.set(0);
+    this._feedRate.set(1500);
+    this._temperature.set(0);
+    this._bedTemperature.set(0);
+    this._fanSpeed.set(0);
+    this._absolutePositioning.set(true);
+    this._absoluteExtrusion.set(true);
+    this._isExtruding.set(false);
+    this._executionTime.set(0);
+    this._pathSegments.set([]);
+    this._currentPath.set(null);
 
-    // Reset printer state
-    this._printerState.set({
-      position: createVector3D(0, 0, 0),
-      extruderPosition: 0,
-      feedRate: 1500,
-      temperature: 0,
-      bedTemperature: 0,
-      fanSpeed: 0,
-      absolutePositioning: true,
-      absoluteExtrusion: true,
-      currentLayer: 0,
-      totalLayers: 0,
-      printProgress: 0,
-      isExtruding: false,
-      currentCommandIndex: 0,
-      totalCommands: 0,
-      executionTime: 0,
-      estimatedTimeRemaining: 0,
-    });
+    this.clearPaths();
+    this._simulationState.set(SimulationState.IDLE);
+  }
 
-    // Clear history and visualization
-    this.commandHistory = [];
-    this.pathSegments = [];
-    this.clearVisualization();
+  /**
+   * Step back n commands
+   */
+  stepBack(steps = 1): void {
+    const currentIndex = this._currentCommandIndex();
+    const newIndex = Math.max(0, currentIndex - steps);
 
-    // Reset streaming service
-    this.streamingService.reset();
+    if (newIndex !== currentIndex) {
+      this.jumpToCommand(newIndex);
+    }
+  }
+
+  /**
+   * Step forward n commands
+   */
+  stepForward(steps = 1): void {
+    const currentIndex = this._currentCommandIndex();
+    const totalCommands = this.totalCommands();
+    const newIndex = Math.min(totalCommands - 1, currentIndex + steps);
+
+    if (newIndex !== currentIndex) {
+      this.jumpToCommand(newIndex);
+    }
   }
 
   /**
    * Jump to specific command index
    */
   jumpToCommand(index: number): void {
-    const totalCommands = this.printerState().totalCommands;
+    const totalCommands = this.totalCommands();
+    if (index < 0 || index >= totalCommands) return;
 
-    if (index < 0 || index >= totalCommands) {
-      throw new Error(`Invalid command index: ${index}`);
+    const wasRunning = this._simulationState() === SimulationState.RUNNING;
+    this.stop();
+
+    // Reset state and re-execute commands up to target index
+    this._printerPosition.set({ x: 0, y: 0, z: 0 });
+    this._extruderPosition.set(0);
+    this._feedRate.set(1500);
+    this._temperature.set(0);
+    this._bedTemperature.set(0);
+    this._fanSpeed.set(0);
+    this._absolutePositioning.set(true);
+    this._absoluteExtrusion.set(true);
+    this._isExtruding.set(false);
+
+    this.clearPaths();
+    const segments: PathSegment[] = [];
+
+    // Re-execute commands up to target index
+    for (let i = 0; i <= index; i++) {
+      const command = this._commands()[i];
+      if (command) {
+        const segment = this.executeCommandSilent(command);
+        if (segment) {
+          segments.push(segment);
+          this.visualizePath(segment);
+        }
+      }
     }
 
-    if (this.isSimulationActive()) {
-      throw new Error('Cannot jump while simulation is running');
-    }
+    this._pathSegments.set(segments);
+    this._currentCommandIndex.set(index);
 
-    // Fast-forward to the target command
-    this.fastForwardToCommand(index);
+    if (wasRunning && index < totalCommands - 1) {
+      this.start();
+    }
   }
 
   /**
-   * Step forward by specified number of commands
+   * Get current command
    */
-  stepForward(steps: number = 1): void {
-    const currentIndex = this.printerState().currentCommandIndex;
-    const targetIndex = Math.min(
-      currentIndex + steps,
-      this.printerState().totalCommands - 1
+  getCurrentCommand(): GCodeCommand | null {
+    const commands = this._commands();
+    const index = this._currentCommandIndex();
+    return commands[index] || null;
+  }
+
+  /**
+   * Get command at specific index
+   */
+  getCommand(index: number): GCodeCommand | null {
+    const commands = this._commands();
+    return commands[index] || null;
+  }
+
+  /**
+   * Animation loop ottimizzato con controllo velocità migliorato
+   */
+  private animate(): void {
+    if (this._simulationState() !== SimulationState.RUNNING) return;
+
+    this.animationId = requestAnimationFrame(() => this.animate());
+
+    const now = performance.now();
+    const deltaTime = now - this.lastUpdateTime;
+    this.lastUpdateTime = now;
+
+    // Aggiorna execution time con velocità attuale
+    const scaledDeltaTime = deltaTime * this._animationSpeed();
+    const newExecutionTime = this._executionTime() + scaledDeltaTime / 1000;
+    this._executionTime.set(newExecutionTime);
+
+    // Calcola intervallo comando dinamico basato sulla velocità
+    const currentSpeed = this._animationSpeed();
+    const commandInterval = Math.max(
+      10,
+      this.baseCommandInterval / currentSpeed
     );
 
-    if (targetIndex > currentIndex) {
-      this.jumpToCommand(targetIndex);
+    // Tempo trascorso dall'ultimo comando
+    const timeSinceLastCommand = now - this.commandStartTime;
+
+    // Esegui prossimo comando se è tempo
+    if (timeSinceLastCommand >= commandInterval) {
+      const commands = this._commands();
+      const currentIndex = this._currentCommandIndex();
+
+      if (currentIndex < commands.length) {
+        const command = commands[currentIndex];
+        const segment = this.executeCommand(command);
+
+        if (segment) {
+          const currentSegments = this._pathSegments();
+          this._pathSegments.set([...currentSegments, segment]);
+          this._currentPath.set(segment);
+          this.visualizePath(segment);
+        }
+
+        this._currentCommandIndex.set(currentIndex + 1);
+        this.commandStartTime = now;
+
+        // Aggiorna visualizzazione ogni gruppo di comandi per performance
+        if (currentIndex % this.pathBatchSize === 0) {
+          this.updateBatchedMeshes();
+        }
+      } else {
+        // Simulazione completata
+        this._simulationState.set(SimulationState.COMPLETED);
+        this._currentPath.set(null);
+        this.finalizeVisualization(); // Aggiorna visualizzazione finale
+      }
     }
   }
 
   /**
-   * Step backward by specified number of commands
+   * Execute command and return path segment
    */
-  stepBack(steps: number = 1): void {
-    const currentIndex = this.printerState().currentCommandIndex;
-    const targetIndex = Math.max(currentIndex - steps, 0);
-
-    if (targetIndex < currentIndex) {
-      this.jumpToCommand(targetIndex);
-    }
+  private executeCommand(command: GCodeCommand): PathSegment | null {
+    return this.executeCommandSilent(command);
   }
 
   /**
-   * Update viewport settings with validation
+   * Execute command without side effects (for jumping)
    */
-  updateViewportSettings(settings: Partial<ViewportSettings>): void {
+  private executeCommandSilent(command: GCodeCommand): PathSegment | null {
+    const startPos = { ...this._printerPosition() };
+    const startE = this._extruderPosition();
+
     try {
-      const newSettings = { ...this.viewportSettings(), ...settings };
+      switch (command.command) {
+        case 'G0': // Rapid move
+        case 'G1': // Linear move
+          return this.executeLinearMove(command, startPos, startE);
 
-      // Validate settings
-      this.validateViewportSettings(newSettings);
+        case 'G2': // Clockwise arc
+          return this.executeArcMove(command, startPos, startE, true);
 
-      this._viewportSettings.set(newSettings);
+        case 'G3': // Counter-clockwise arc
+          return this.executeArcMove(command, startPos, startE, false);
 
-      // Apply settings to visualization
-      this.applyViewportSettings(newSettings);
+        case 'G5': // Bezier curve (cubic)
+          return this.executeBezierMove(command, startPos, startE);
+
+        case 'G5.1': // Quadratic Bezier
+          return this.executeQuadraticBezierMove(command, startPos, startE);
+
+        case 'G6': // NURBS curve
+          console.log('G6 TODO');
+          return null; //this.executeNurbsMove(command, startPos, startE);  // TODO
+
+        case 'G10': // Coordinate system data tool offset
+          this.executeCoordinateOffset(command);
+          break;
+
+        case 'G17': // XY plane selection
+        case 'G18': // XZ plane selection
+        case 'G19': // YZ plane selection
+          this.executePlaneSelection(command);
+          break;
+
+        case 'G20': // Inches
+        case 'G21': // Millimeters
+          this.executeUnitsSelection(command);
+          break;
+
+        case 'G54': // Coordinate system 1
+        case 'G55': // Coordinate system 2
+        case 'G56': // Coordinate system 3
+        case 'G57': // Coordinate system 4
+        case 'G58': // Coordinate system 5
+        case 'G59': // Coordinate system 6
+          this.executeCoordinateSystem(command);
+          break;
+        case 'G28': // Home
+          this.executeHome(command);
+          break;
+        case 'G90': // Absolute positioning
+          this._absolutePositioning.set(true);
+          break;
+        case 'G91': // Relative positioning
+          this._absolutePositioning.set(false);
+          break;
+        case 'G92': // Set position
+          this.executeSetPosition(command);
+          break;
+        case 'M82': // Absolute extrusion
+          this._absoluteExtrusion.set(true);
+          break;
+        case 'M83': // Relative extrusion
+          this._absoluteExtrusion.set(false);
+          break;
+        case 'M104': // Set extruder temperature
+          if (command.s !== undefined) {
+            this._temperature.set(command.s);
+          }
+          break;
+        case 'M140': // Set bed temperature
+          if (command.s !== undefined) {
+            this._bedTemperature.set(command.s);
+          }
+          break;
+        case 'M106': // Fan on
+          this._fanSpeed.set(command.s || 255);
+          break;
+        case 'M107': // Fan off
+          this._fanSpeed.set(0);
+          break;
+        case 'M109': // Wait for extruder temperature
+          if (command.s !== undefined) {
+            this._temperature.set(command.s);
+          }
+          break;
+        case 'M190': // Wait for bed temperature
+          if (command.s !== undefined) {
+            this._bedTemperature.set(command.s);
+          }
+          break;
+        default:
+          // Handle other commands or log unknown
+          console.debug(`Unknown command: ${command.command}`);
+          break;
+      }
     } catch (error) {
-      this.handleError('system', `Failed to update settings: ${error}`, error);
+      this._errorMessage.set(
+        `Error executing command ${command.command}: ${error}`
+      );
+      this._simulationState.set(SimulationState.ERROR);
     }
+
+    return null;
+  }
+
+  private executeLinearMove(
+    command: GCodeCommand,
+    startPos: PrinterPosition,
+    startE: number
+  ): PathSegment | null {
+    const newPos = this.calculateNewPosition(command, startPos);
+    const extrusionDiff = this.calculateExtrusionDiff(command, startE);
+
+    // Update printer state
+    this._printerPosition.set(newPos);
+    if (command.f !== undefined) {
+      this._feedRate.set(command.f);
+    }
+
+    // Determine if this is an extrusion move
+    const isExtrusion = extrusionDiff > 0.001;
+    const isTravel = !isExtrusion && extrusionDiff >= -0.001;
+
+    this._isExtruding.set(isExtrusion);
+
+    // Create path segment if there's movement
+    if (this.hasMovement(startPos, newPos)) {
+      return {
+        startPoint: new THREE.Vector3(startPos.x, startPos.z, startPos.y),
+        endPoint: new THREE.Vector3(newPos.x, newPos.z, newPos.y),
+        extrusionAmount: Math.abs(extrusionDiff),
+        isExtrusion,
+        isTravel,
+        isArc: false,
+      };
+    }
+
+    return null;
+  }
+
+  private executeArcMove(
+    command: GCodeCommand,
+    startPos: PrinterPosition,
+    startE: number,
+    clockwise: boolean
+  ): PathSegment | null {
+    const newPos = this.calculateNewPosition(command, startPos);
+    const extrusionDiff = this.calculateExtrusionDiff(command, startE);
+
+    // Calculate arc center
+    let centerPos: THREE.Vector3;
+    if (command.i !== undefined || command.j !== undefined) {
+      centerPos = new THREE.Vector3(
+        startPos.x + (command.i || 0),
+        startPos.z + (command.k || 0),
+        startPos.y + (command.j || 0)
+      );
+    } else if (command.r !== undefined) {
+      const center2D = this.calculateArcCenterFromRadius(
+        { x: startPos.x, y: startPos.y },
+        { x: newPos.x, y: newPos.y },
+        command.r,
+        clockwise
+      );
+      centerPos = new THREE.Vector3(center2D.x, startPos.z, center2D.y);
+    } else {
+      return this.executeLinearMove(command, startPos, startE);
+    }
+
+    // Update printer state
+    this._printerPosition.set(newPos);
+    if (command.f !== undefined) {
+      this._feedRate.set(command.f);
+    }
+
+    const isExtrusion = extrusionDiff > 0.001;
+    this._isExtruding.set(isExtrusion);
+
+    // Generate arc segments
+    const segments = this.generateArcPoints(
+      new THREE.Vector3(startPos.x, startPos.z, startPos.y),
+      new THREE.Vector3(newPos.x, newPos.z, newPos.y),
+      centerPos,
+      clockwise
+    );
+
+    const radius = new THREE.Vector3(
+      startPos.x,
+      startPos.z,
+      startPos.y
+    ).distanceTo(centerPos);
+
+    return {
+      startPoint: new THREE.Vector3(startPos.x, startPos.z, startPos.y),
+      endPoint: new THREE.Vector3(newPos.x, newPos.z, newPos.y),
+      extrusionAmount: Math.abs(extrusionDiff),
+      isExtrusion,
+      isTravel: !isExtrusion,
+      isArc: true,
+      arcCenter: centerPos,
+      arcRadius: radius,
+      segments,
+    };
   }
 
   /**
-   * Update quality settings for performance optimization
+   * Esegue movimento con curva Bezier cubica
    */
-  updateQualitySettings(settings: Partial<QualitySettings>): void {
-    const currentSettings = this.viewportSettings();
+  private executeBezierMove(
+    command: GCodeCommand,
+    startPos: PrinterPosition,
+    startE: number
+  ): PathSegment | null {
+    const newPos = this.calculateNewPosition(command, startPos);
+    const extrusionDiff = this.calculateExtrusionDiff(command, startE);
 
-    const updatedSettings: Partial<ViewportSettings> = {};
+    // Punti di controllo per Bezier cubica
+    // G5 X[end_x] Y[end_y] I[control1_x] J[control1_y] P[control2_x] Q[control2_y]
+    const control1 = new THREE.Vector3(
+      startPos.x + (command.i || 0),
+      startPos.z,
+      startPos.y + (command.j || 0)
+    );
 
-    if (settings.maxPathPoints !== undefined) {
-      updatedSettings.maxPathPoints = settings.maxPathPoints;
+    const control2 = new THREE.Vector3(
+      startPos.x + (command.p || 0),
+      startPos.z,
+      startPos.y + (command.q || 0)
+    );
+
+    // Aggiorna posizione printer
+    this._printerPosition.set(newPos);
+    if (command.f !== undefined) {
+      this._feedRate.set(command.f);
     }
 
-    if (settings.enableShadows !== undefined) {
-      updatedSettings.enableShadows = settings.enableShadows;
-    }
+    const isExtrusion = extrusionDiff > 0.001;
+    this._isExtruding.set(isExtrusion);
 
-    if (settings.antialiasing !== undefined) {
-      updatedSettings.antialiasing = settings.antialiasing;
-    }
+    // Genera punti curva Bezier
+    const segments = this.generateBezierPoints(
+      new THREE.Vector3(startPos.x, startPos.z, startPos.y),
+      control1,
+      control2,
+      new THREE.Vector3(newPos.x, newPos.z, newPos.y)
+    );
 
-    this.updateViewportSettings(updatedSettings);
+    return {
+      startPoint: new THREE.Vector3(startPos.x, startPos.z, startPos.y),
+      endPoint: new THREE.Vector3(newPos.x, newPos.z, newPos.y),
+      extrusionAmount: Math.abs(extrusionDiff),
+      isExtrusion,
+      isTravel: !isExtrusion,
+      isArc: false,
+      isBezier: true,
+      segments,
+      controlPoints: [control1, control2],
+    };
   }
 
   /**
-   * Get command execution history
+   * Esegue movimento con curva Bezier quadratica
    */
-  getCommandHistory(): ReadonlyArray<CommandExecutionInfo> {
-    return [...this.commandHistory];
+  private executeQuadraticBezierMove(
+    command: GCodeCommand,
+    startPos: PrinterPosition,
+    startE: number
+  ): PathSegment | null {
+    const newPos = this.calculateNewPosition(command, startPos);
+    const extrusionDiff = this.calculateExtrusionDiff(command, startE);
+
+    // Punto di controllo per Bezier quadratica
+    const control = new THREE.Vector3(
+      startPos.x + (command.i || 0),
+      startPos.z,
+      startPos.y + (command.j || 0)
+    );
+
+    this._printerPosition.set(newPos);
+    if (command.f !== undefined) {
+      this._feedRate.set(command.f);
+    }
+
+    const isExtrusion = extrusionDiff > 0.001;
+    this._isExtruding.set(isExtrusion);
+
+    const segments = this.generateQuadraticBezierPoints(
+      new THREE.Vector3(startPos.x, startPos.z, startPos.y),
+      control,
+      new THREE.Vector3(newPos.x, newPos.z, newPos.y)
+    );
+
+    return {
+      startPoint: new THREE.Vector3(startPos.x, startPos.z, startPos.y),
+      endPoint: new THREE.Vector3(newPos.x, newPos.z, newPos.y),
+      extrusionAmount: Math.abs(extrusionDiff),
+      isExtrusion,
+      isTravel: !isExtrusion,
+      isArc: false,
+      isBezier: true,
+      segments,
+      controlPoints: [control],
+    };
   }
 
   /**
-   * Get current path segments
+   * Calcola punto su curva Bezier cubica
    */
-  getPathSegments(): ReadonlyArray<PathSegment> {
-    return [...this.pathSegments];
+  private cubicBezierPoint(
+    p0: THREE.Vector3,
+    p1: THREE.Vector3,
+    p2: THREE.Vector3,
+    p3: THREE.Vector3,
+    t: number
+  ): THREE.Vector3 {
+    const u = 1 - t;
+    const tt = t * t;
+    const uu = u * u;
+    const uuu = uu * u;
+    const ttt = tt * t;
+
+    // Formula Bezier cubica: (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃
+    const point = new THREE.Vector3();
+    point.addScaledVector(p0, uuu);
+    point.addScaledVector(p1, 3 * uu * t);
+    point.addScaledVector(p2, 3 * u * tt);
+    point.addScaledVector(p3, ttt);
+
+    return point;
   }
 
   /**
-   * Get Three.js scene for rendering
+   * Calcola punto su curva Bezier quadratica
+   */
+  private quadraticBezierPoint(
+    p0: THREE.Vector3,
+    p1: THREE.Vector3,
+    p2: THREE.Vector3,
+    t: number
+  ): THREE.Vector3 {
+    const u = 1 - t;
+    const tt = t * t;
+    const uu = u * u;
+
+    // Formula Bezier quadratica: (1-t)²P₀ + 2(1-t)tP₁ + t²P₂
+    const point = new THREE.Vector3();
+    point.addScaledVector(p0, uu);
+    point.addScaledVector(p1, 2 * u * t);
+    point.addScaledVector(p2, tt);
+
+    return point;
+  }
+
+  /**
+   * Gestisce comandi di offset coordinate
+   */
+  private executeCoordinateOffset(command: GCodeCommand): void {
+    // G10 L2 P[coordinate_system] X[offset] Y[offset] Z[offset]
+    console.debug(`Coordinate offset: ${JSON.stringify(command)}`);
+  }
+
+  /**
+   * Gestisce selezione piano di lavoro
+   */
+  private executePlaneSelection(command: GCodeCommand): void {
+    switch (command.command) {
+      case 'G17':
+        console.debug('Selected XY plane');
+        break;
+      case 'G18':
+        console.debug('Selected XZ plane');
+        break;
+      case 'G19':
+        console.debug('Selected YZ plane');
+        break;
+    }
+  }
+
+  /**
+   * Gestisce selezione unità di misura
+   */
+  private executeUnitsSelection(command: GCodeCommand): void {
+    switch (command.command) {
+      case 'G20':
+        console.debug('Units: Inches');
+        break;
+      case 'G21':
+        console.debug('Units: Millimeters');
+        break;
+    }
+  }
+
+  /**
+   * Gestisce sistemi di coordinate
+   */
+  private executeCoordinateSystem(command: GCodeCommand): void {
+    const systemNumber = parseInt(command.command.substring(1)) - 53;
+    console.debug(`Switched to coordinate system ${systemNumber}`);
+  }
+
+  // Aggiorna il metodo per visualizzare curve
+  private createCurveVisualization(segment: PathSegment): void {
+    if (!segment.segments) return;
+
+    const geometry = new THREE.BufferGeometry().setFromPoints(segment.segments);
+
+    if (segment.isExtrusion) {
+      // Colore specifico basato sul tipo di curva
+      let color: number;
+      if (segment.isBezier) {
+        color = 0x44ff44; // Verde per Bezier
+      } else if (segment.isArc) {
+        color = 0xffaa00; // Arancione per archi
+      } else {
+        color = 0xff4444; // Rosso per movimenti lineari
+      }
+
+      const material = new THREE.LineBasicMaterial({
+        color: color,
+        linewidth: Math.max(2, segment.extrusionAmount * 3),
+        transparent: true,
+        opacity: 0.9,
+      });
+
+      const line = new THREE.Line(geometry, material);
+      line.castShadow = true;
+      this.extrudedPaths.add(line);
+
+      // Visualizza punti di controllo se disponibili
+      if (segment.controlPoints && segment.controlPoints.length > 0) {
+        const curveType =
+          segment.controlPoints.length === 1 ? 'quadratic' : 'bezier';
+        this.visualizeControlPoints(segment.controlPoints, curveType);
+      }
+    } else {
+      const material = new THREE.LineBasicMaterial({
+        color: 0x888888,
+        transparent: true,
+        opacity: 0.2,
+        linewidth: 1,
+      });
+      const line = new THREE.Line(geometry, material);
+      this.travelPaths.add(line);
+    }
+  }
+
+  private executeDwell(command: GCodeCommand): void {
+    if (command.p !== undefined) {
+      console.debug(`Dwell: ${command.p}ms`);
+    }
+  }
+
+  private executeHome(command: GCodeCommand): void {
+    const currentPos = { ...this._printerPosition() };
+
+    if (command.x !== undefined || (!command.x && !command.y && !command.z)) {
+      currentPos.x = 0;
+    }
+    if (command.y !== undefined || (!command.x && !command.y && !command.z)) {
+      currentPos.y = 0;
+    }
+    if (command.z !== undefined || (!command.x && !command.y && !command.z)) {
+      currentPos.z = 0;
+    }
+
+    this._printerPosition.set(currentPos);
+  }
+
+  private executeSetPosition(command: GCodeCommand): void {
+    const currentPos = { ...this._printerPosition() };
+
+    if (command.x !== undefined) currentPos.x = command.x;
+    if (command.y !== undefined) currentPos.y = command.y;
+    if (command.z !== undefined) currentPos.z = command.z;
+    if (command.e !== undefined) this._extruderPosition.set(command.e);
+
+    this._printerPosition.set(currentPos);
+  }
+
+  private calculateNewPosition(
+    command: GCodeCommand,
+    currentPos: PrinterPosition
+  ): PrinterPosition {
+    const newPos = { ...currentPos };
+
+    if (this._absolutePositioning()) {
+      if (command.x !== undefined) newPos.x = command.x;
+      if (command.y !== undefined) newPos.y = command.y;
+      if (command.z !== undefined) newPos.z = command.z;
+    } else {
+      if (command.x !== undefined) newPos.x += command.x;
+      if (command.y !== undefined) newPos.y += command.y;
+      if (command.z !== undefined) newPos.z += command.z;
+    }
+
+    return newPos;
+  }
+
+  private calculateExtrusionDiff(
+    command: GCodeCommand,
+    currentE: number
+  ): number {
+    if (command.e === undefined) return 0;
+
+    if (this._absoluteExtrusion()) {
+      const diff = command.e - currentE;
+      this._extruderPosition.set(command.e);
+      return diff;
+    } else {
+      this._extruderPosition.set(currentE + command.e);
+      return command.e;
+    }
+  }
+
+  private hasMovement(pos1: PrinterPosition, pos2: PrinterPosition): boolean {
+    const threshold = 0.001;
+    return (
+      Math.abs(pos1.x - pos2.x) > threshold ||
+      Math.abs(pos1.y - pos2.y) > threshold ||
+      Math.abs(pos1.z - pos2.z) > threshold
+    );
+  }
+
+  private calculateArcCenterFromRadius(
+    start: { x: number; y: number },
+    end: { x: number; y: number },
+    radius: number,
+    clockwise: boolean
+  ): { x: number; y: number } {
+    const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+    const dist = Math.sqrt((end.x - start.x) ** 2 + (end.y - start.y) ** 2);
+
+    if (dist > 2 * Math.abs(radius)) {
+      radius = dist / 2;
+    }
+
+    const h = Math.sqrt(Math.abs(radius * radius - (dist * dist) / 4));
+    const dx = end.y - start.y;
+    const dy = start.x - end.x;
+    const len = Math.sqrt(dx * dx + dy * dy);
+
+    if (len === 0) return mid;
+
+    const ux = dx / len;
+    const uy = dy / len;
+
+    if (clockwise) {
+      return { x: mid.x + h * ux, y: mid.y + h * uy };
+    } else {
+      return { x: mid.x - h * ux, y: mid.y - h * uy };
+    }
+  }
+
+  private generateArcPoints(
+    start: THREE.Vector3,
+    end: THREE.Vector3,
+    center: THREE.Vector3,
+    clockwise: boolean
+  ): THREE.Vector3[] {
+    const startAngle = Math.atan2(start.z - center.z, start.x - center.x);
+    const endAngle = Math.atan2(end.z - center.z, end.x - center.x);
+    const radius = start.distanceTo(center);
+
+    let angleDiff = endAngle - startAngle;
+    if (clockwise) {
+      if (angleDiff > 0) angleDiff -= 2 * Math.PI;
+    } else {
+      if (angleDiff < 0) angleDiff += 2 * Math.PI;
+    }
+
+    const numSegments = Math.max(8, (Math.abs(angleDiff) * radius) / 2);
+    const points: THREE.Vector3[] = [];
+
+    for (let i = 0; i <= numSegments; i++) {
+      const t = i / numSegments;
+      const angle = startAngle + t * angleDiff;
+      const x = center.x + radius * Math.cos(angle);
+      const z = center.z + radius * Math.sin(angle);
+      const y = start.y + (end.y - start.y) * t;
+      points.push(new THREE.Vector3(x, y, z));
+    }
+
+    return points;
+  }
+
+  private visualizePath(segment: PathSegment): void {
+    if (segment.isBezier || (segment.isArc && segment.segments)) {
+      this.createCurveVisualization(segment);
+    } else {
+      this.addLinearToBatch(segment);
+    }
+
+    // Aggiorna le mesh ogni pathBatchSize comandi
+    if (this._currentCommandIndex() % this.pathBatchSize === 0) {
+      this.updateBatchedMeshes();
+    }
+  }
+
+  private addLinearToBatch(segment: PathSegment): void {
+    const batch = segment.isExtrusion
+      ? this.batchedExtrusionPath
+      : this.batchedTravelPath;
+
+    // Aggiungi punti
+    batch.points.push(segment.startPoint, segment.endPoint);
+
+    if (segment.isExtrusion) {
+      // Colore basato sulla quantità di estrusione
+      const intensity = Math.min(1, segment.extrusionAmount * 0.1);
+      const color = new THREE.Color().setHSL(0, 0.8, 0.5 + intensity * 0.3);
+      batch.colors.push(color, color);
+    }
+
+    // Gestisci limite punti per evitare lag
+    if (batch.points.length > this.maxPathPoints) {
+      this.trimPathBatch(batch);
+    }
+  }
+
+  private addArcToBatch(segment: PathSegment): void {
+    if (!segment.segments) return;
+
+    const batch = segment.isExtrusion
+      ? this.batchedExtrusionPath
+      : this.batchedTravelPath;
+
+    // Aggiungi tutti i punti dell'arco
+    for (let i = 0; i < segment.segments.length - 1; i++) {
+      batch.points.push(segment.segments[i], segment.segments[i + 1]);
+
+      if (segment.isExtrusion) {
+        const intensity = Math.min(1, segment.extrusionAmount * 0.1);
+        const color = new THREE.Color().setHSL(
+          0.05,
+          0.8,
+          0.5 + intensity * 0.3
+        );
+        batch.colors.push(color, color);
+      }
+    }
+
+    if (batch.points.length > this.maxPathPoints) {
+      this.trimPathBatch(batch);
+    }
+  }
+
+  private trimPathBatch(batch: BatchedPath): void {
+    // Rimuovi i primi punti più vecchi, mantenendo solo gli ultimi
+    const keepPoints = Math.floor(this.maxPathPoints * 0.7);
+    batch.points = batch.points.slice(-keepPoints);
+
+    if (batch.isExtrusion) {
+      batch.colors = batch.colors.slice(-keepPoints);
+    }
+  }
+
+  private createLinearVisualization(segment: PathSegment): void {
+    const geometry = new THREE.BufferGeometry().setFromPoints([
+      segment.startPoint,
+      segment.endPoint,
+    ]);
+
+    if (segment.isExtrusion) {
+      // Enhanced extrusion visualization with gradient effect
+      const material = new THREE.LineBasicMaterial({
+        color: new THREE.Color().setHSL(
+          0,
+          0.8,
+          0.5 + segment.extrusionAmount * 0.1
+        ),
+        linewidth: Math.max(2, segment.extrusionAmount * 3),
+        transparent: true,
+        opacity: 0.9,
+      });
+      const line = new THREE.Line(geometry, material);
+      line.castShadow = true;
+      this.extrudedPaths.add(line);
+
+      // Add subtle glow effect for recent extrusions
+      if (this.extrudedPaths.children.length > 100) {
+        const oldestLine = this.extrudedPaths.children[0];
+        if (
+          oldestLine instanceof THREE.Line &&
+          oldestLine.material instanceof THREE.LineBasicMaterial
+        ) {
+          oldestLine.material.opacity = Math.max(
+            0.3,
+            oldestLine.material.opacity - 0.01
+          );
+        }
+      }
+    } else if (segment.isTravel) {
+      const material = new THREE.LineBasicMaterial({
+        color: 0x888888,
+        transparent: true,
+        opacity: 0.2,
+        linewidth: 1,
+      });
+      const line = new THREE.Line(geometry, material);
+      this.travelPaths.add(line);
+    }
+  }
+
+  private createArcVisualization(segment: PathSegment): void {
+    if (!segment.segments) return;
+
+    const geometry = new THREE.BufferGeometry().setFromPoints(segment.segments);
+
+    if (segment.isExtrusion) {
+      const material = new THREE.LineBasicMaterial({
+        color: new THREE.Color().setHSL(
+          0.05,
+          0.8,
+          0.5 + segment.extrusionAmount * 0.1
+        ),
+        linewidth: Math.max(2, segment.extrusionAmount * 3),
+        transparent: true,
+        opacity: 0.9,
+      });
+      const line = new THREE.Line(geometry, material);
+      line.castShadow = true;
+      this.extrudedPaths.add(line);
+    } else {
+      const material = new THREE.LineBasicMaterial({
+        color: 0x888888,
+        transparent: true,
+        opacity: 0.2,
+        linewidth: 1,
+      });
+      const line = new THREE.Line(geometry, material);
+      this.travelPaths.add(line);
+    }
+  }
+
+  private clearPaths(): void {
+    // Pulisci punti di controllo Bezier
+    this.clearBezierControlPoints();
+
+    // Reset batched paths
+    this.batchedExtrusionPath = { points: [], colors: [], isExtrusion: true };
+    this.batchedTravelPath = { points: [], colors: [], isExtrusion: false };
+
+    // Pulisci geometrie esistenti
+    if (this.extrusionMesh) {
+      this.extrusionMesh.geometry.dispose();
+    }
+    if (this.travelMesh) {
+      this.travelMesh.geometry.dispose();
+    }
+
+    // Rimuovi tutti i children e ricrea le mesh
+    this.extrudedPaths.clear();
+    this.travelPaths.clear();
+    this.initializeBatchedMeshes();
+  }
+
+  private updateBatchedMeshes(): void {
+    // Aggiorna mesh estrusione
+    if (this.extrusionMesh && this.batchedExtrusionPath.points.length > 0) {
+      const positions = new Float32Array(
+        this.batchedExtrusionPath.points.length * 3
+      );
+      const colors = new Float32Array(
+        this.batchedExtrusionPath.colors.length * 3
+      );
+
+      this.batchedExtrusionPath.points.forEach((point, index) => {
+        positions[index * 3] = point.x;
+        positions[index * 3 + 1] = point.y;
+        positions[index * 3 + 2] = point.z;
+      });
+
+      this.batchedExtrusionPath.colors.forEach((color, index) => {
+        colors[index * 3] = color.r;
+        colors[index * 3 + 1] = color.g;
+        colors[index * 3 + 2] = color.b;
+      });
+
+      this.extrusionMesh.geometry.setAttribute(
+        'position',
+        new THREE.BufferAttribute(positions, 3)
+      );
+      this.extrusionMesh.geometry.setAttribute(
+        'color',
+        new THREE.BufferAttribute(colors, 3)
+      );
+      this.extrusionMesh.geometry.attributes['position'].needsUpdate = true;
+      this.extrusionMesh.geometry.attributes['color'].needsUpdate = true;
+    }
+
+    // Aggiorna mesh travel
+    if (this.travelMesh && this.batchedTravelPath.points.length > 0) {
+      const positions = new Float32Array(
+        this.batchedTravelPath.points.length * 3
+      );
+
+      this.batchedTravelPath.points.forEach((point, index) => {
+        positions[index * 3] = point.x;
+        positions[index * 3 + 1] = point.y;
+        positions[index * 3 + 2] = point.z;
+      });
+
+      this.travelMesh.geometry.setAttribute(
+        'position',
+        new THREE.BufferAttribute(positions, 3)
+      );
+      this.travelMesh.geometry.attributes['position'].needsUpdate = true;
+    }
+  }
+
+  private finalizeVisualization(): void {
+    this.updateBatchedMeshes();
+  }
+
+  /**
+   * Update build plate visibility
+   */
+  setBuildPlateVisible(visible: boolean): void {
+    this.buildPlate.visible = visible;
+  }
+
+  /**
+   * Update travel paths visibility
+   */
+  setTravelPathsVisible(visible: boolean): void {
+    this.travelPaths.visible = visible;
+  }
+
+  /**
+   * Update filament color
+   */
+  setFilamentColor(color: string): void {
+    // Update existing paths color
+    this.extrudedPaths.children.forEach((child) => {
+      if (
+        child instanceof THREE.Line &&
+        child.material instanceof THREE.LineBasicMaterial
+      ) {
+        child.material.color.setStyle(color);
+      }
+    });
+  }
+
+  /**
+   * Get Three.js scene
    */
   getScene(): THREE.Scene {
     return this.scene;
   }
 
   /**
-   * Get current path object count for performance metrics
+   * Cleanup resources
    */
-  getPathObjectCount(): number {
-    return this.pathRenderingContexts.size;
+  dispose(): void {
+    this.stop();
+    this.clearBezierControlPoints();
+    this.clearPaths();
+    this.scene.clear();
   }
 
-  /**
-   * Export current simulation state
-   */
-  exportSimulationState(): {
-    printerState: PrinterState;
-    commandHistory: CommandExecutionInfo[];
-    pathSegments: PathSegment[];
-    settings: ViewportSettings;
+  getCurveStatistics(): {
+    totalCurves: number;
+    bezierCurves: number;
+    quadraticBezier: number;
+    arcs: number;
+    controlPoints: number;
   } {
+    const segments = this._pathSegments();
+
     return {
-      printerState: this.printerState(),
-      commandHistory: [...this.commandHistory],
-      pathSegments: [...this.pathSegments],
-      settings: this.viewportSettings(),
+      totalCurves: segments.filter((s) => s.isArc || s.isBezier).length,
+      bezierCurves: segments.filter(
+        (s) => s.isBezier && s.controlPoints?.length === 2
+      ).length,
+      quadraticBezier: segments.filter(
+        (s) => s.isBezier && s.controlPoints?.length === 1
+      ).length,
+      arcs: segments.filter((s) => s.isArc && !s.isBezier).length,
+      controlPoints: segments.reduce(
+        (sum, s) => sum + (s.controlPoints?.length || 0),
+        0
+      ),
     };
+  }
+
+  autoOptimizePerformance(): void {
+    const totalSegments = this._pathSegments().length;
+
+    if (totalSegments > 20000) {
+      // File molto grande, riduci qualità per performance
+      this.setMaxPathPoints(30000);
+      this.setBatchSize(200);
+      this.setCurveResolution(15);
+      console.info('Auto-optimization applied for large file');
+    } else if (totalSegments > 10000) {
+      // File medio, bilanciamento qualità/performance
+      this.setMaxPathPoints(40000);
+      this.setBatchSize(150);
+      this.setCurveResolution(20);
+      console.info('Auto-optimization applied for medium file');
+    }
+  }
+
+  exportPathDetails(): any {
+    const segments = this._pathSegments();
+    const curveStats = this.getCurveStatistics();
+
+    return {
+      totalSegments: segments.length,
+      extrusionSegments: segments.filter((s) => s.isExtrusion).length,
+      travelSegments: segments.filter((s) => s.isTravel).length,
+      curveStatistics: curveStats,
+      performanceSettings: {
+        maxPathPoints: this.maxPathPoints,
+        batchSize: this.pathBatchSize,
+        curveResolution: this.curveResolution,
+        showBezierControls: this.showBezierControlPoints,
+      },
+      memoryUsage: {
+        extrusionPoints: this.batchedExtrusionPath.points.length,
+        travelPoints: this.batchedTravelPath.points.length,
+        controlPointMeshes: this.bezierControlPointsMeshes.length,
+      },
+    };
+  }
+
+  private bufferSize = 100; // Dimensione del buffer configurabile
+  private fileReader: FileReader | null = null;
+  private commandBuffer: string[] = [];
+
+  /**
+   * Imposta la dimensione del buffer per il caricamento in streaming
+   */
+  setBufferSize(size: number): void {
+    this.bufferSize = Math.max(10, Math.min(1000, size));
+    console.debug(`Buffer size set to: ${this.bufferSize}`);
   }
 
   /**
-   * Import simulation state (for testing/debugging)
+   * Carica un file G-code in streaming
    */
-  importSimulationState(state: {
-    printerState: PrinterState;
-    commandHistory: CommandExecutionInfo[];
-    pathSegments: PathSegment[];
-    settings: ViewportSettings;
-  }): void {
-    this._printerState.set(state.printerState);
-    this.commandHistory = [...state.commandHistory];
-    this.pathSegments = [...state.pathSegments];
-    this._viewportSettings.set(state.settings);
+  loadGCodeFile(file: Blob): void {
+    this.fileReader = new FileReader();
+    this.fileReader.onload = (event) => {
+      const text = event.target?.result as string;
+      this.commandBuffer.push(...text.split(/\r?\n/));
+      this.processBuffer();
+    };
 
-    this.rebuildVisualization();
+    this.fileReader.onerror = () => {
+      this._errorMessage.set('Error reading G-code file');
+    };
+
+    this.fileReader.readAsText(file);
   }
 
-  // Private Methods
-
-  private async processLoadedCommands(): Promise<void> {
-    const commands = this.streamingService.commandBuffer();
-    const totalCommands = commands.length;
-
-    if (totalCommands === 0) {
-      throw new Error('No valid commands found in G-code');
+  /**
+   * Processa i comandi dal buffer
+   */
+  private processBuffer(): void {
+    if (this.commandBuffer.length === 0) {
+      return;
     }
 
-    // Update printer state with command info
-    this._printerState.update((state) => ({
-      ...state,
-      totalCommands,
-      totalLayers: this.estimateTotalLayers(commands),
-      estimatedTimeRemaining: this.estimateExecutionTime(commands),
-    }));
+    const commandsToLoad = this.commandBuffer.splice(0, this.bufferSize);
+    const parsedCommands = commandsToLoad
+      .map((line, index) => this.parseLine(line, index + 1))
+      .filter(Boolean) as GCodeCommand[];
 
-    // Pre-process commands for optimization
-    await this.preprocessCommands(commands);
-  }
+    this._commands.set([...this._commands(), ...parsedCommands]);
+    console.debug(`Loaded ${parsedCommands.length} commands from buffer`);
 
-  private estimateTotalLayers(commands: ReadonlyArray<GCodeCommand>): number {
-    const layerHeights = new Set<number>();
-
-    for (const command of commands) {
-      if (command.command === 'G1' && command.parameters.has('Z')) {
-        const z = command.parameters.get('Z')!;
-        if (z > 0) {
-          layerHeights.add(Math.floor(z / this.viewportSettings().layerHeight));
-        }
-      }
-    }
-
-    return Math.max(1, layerHeights.size);
-  }
-
-  private estimateExecutionTime(commands: ReadonlyArray<GCodeCommand>): number {
-    // Simplified estimation: 0.1 seconds per command
-    // In reality, this would consider feed rates, distances, etc.
-    return commands.length * 0.1;
-  }
-
-  private async preprocessCommands(
-    commands: ReadonlyArray<GCodeCommand>
-  ): Promise<void> {
-    // Pre-calculate path segments for visualization
-    if (this.config().pathOptimization) {
-      await this.precalculatePathSegments(commands);
-    }
-  }
-
-  private async precalculatePathSegments(
-    commands: ReadonlyArray<GCodeCommand>
-  ): Promise<void> {
-    const segments: PathSegment[] = [];
-    let currentPosition = createVector3D(0, 0, 0);
-    let extruderPosition = 0;
-
-    for (
-      let i = 0;
-      i < commands.length &&
-      segments.length < this.viewportSettings().maxPathPoints;
-      i++
-    ) {
-      const command = commands[i];
-
-      if (isMovementCommand(command)) {
-        const newPosition = this.calculateNewPosition(currentPosition, command);
-        const newExtruderPos = command.parameters.has('E')
-          ? command.parameters.get('E')!
-          : extruderPosition;
-
-        const segment = this.createPathSegment(
-          currentPosition,
-          newPosition,
-          extruderPosition,
-          newExtruderPos,
-          command
+    if (this.commandBuffer.length > 0) {
+      if (this._simulationState() === SimulationState.RUNNING) {
+        setTimeout(() => this.processBuffer(), 0); // Continua a processare il buffer
+      } else {
+        console.debug(
+          'In attesa che lo stato passi a RUNNING per continuare il caricamento.'
         );
-
-        segments.push(segment);
-
-        currentPosition = newPosition;
-        extruderPosition = newExtruderPos;
       }
     }
-
-    this.pathSegments = segments;
   }
 
-  private calculateNewPosition(
-    currentPos: Vector3D,
-    command: GCodeCommand
-  ): Vector3D {
-    const absoluteMode = this.printerState().absolutePositioning;
+  /**
+   * Carica un file G-code in streaming senza salvare tutte le righe in memoria
+   */
+  loadGCodeBlob(blob: Blob): void {
+    const decoder = new TextDecoder('utf-8');
+    const stream = blob.stream().getReader();
 
-    const x = command.parameters.has('X')
-      ? command.parameters.get('X')!
-      : currentPos.x;
-    const y = command.parameters.has('Y')
-      ? command.parameters.get('Y')!
-      : currentPos.y;
-    const z = command.parameters.has('Z')
-      ? command.parameters.get('Z')!
-      : currentPos.z;
-
-    if (absoluteMode) {
-      return createVector3D(x, y, z);
-    } else {
-      return createVector3D(
-        currentPos.x + (command.parameters.has('X') ? x : 0),
-        currentPos.y + (command.parameters.has('Y') ? y : 0),
-        currentPos.z + (command.parameters.has('Z') ? z : 0)
-      );
-    }
-  }
-
-  private createPathSegment(
-    startPos: Vector3D,
-    endPos: Vector3D,
-    startE: number,
-    endE: number,
-    command: GCodeCommand
-  ): PathSegment {
-    const isExtrusion = isExtrusionCommand(command) && endE > startE;
-    const isTravel = !isExtrusion;
-    const extrusionAmount = endE - startE;
-
-    return {
-      startPoint: new THREE.Vector3(startPos.x, startPos.z, startPos.y),
-      endPoint: new THREE.Vector3(endPos.x, endPos.z, endPos.y),
-      extrusionAmount,
-      isExtrusion,
-      isTravel,
-      isArc: command.command === 'G2' || command.command === 'G3',
-      isBezier: command.command === 'G5',
-      isNurbs: command.command === 'G6',
-    };
-  }
-
-  private async executeCommand(
-    command: GCodeCommand
-  ): Promise<CommandExecutionInfo> {
-    const startTime = performance.now();
-    const startTimestamp = new Date();
-
-    try {
-      // Update printer state based on command
-      this.updatePrinterStateFromCommand(command);
-
-      // Create visualization for movement commands
-      if (isMovementCommand(command)) {
-        await this.visualizeCommand(command);
+    const processChunk = async ({
+      done,
+      value,
+    }: ReadableStreamReadResult<Uint8Array>) => {
+      if (done) {
+        console.debug('G-code streaming completato');
+        this._simulationState.set(SimulationState.IDLE); // Imposta lo stato su IDLE al termine
+        return;
       }
 
-      const executionTime = performance.now() - startTime;
-      const commandInfo: CommandExecutionInfo = {
-        index: this.commandHistory.length,
-        command,
-        executionTime,
-        cumulativeTime: this.printerState().executionTime + executionTime,
-        timestamp: startTimestamp,
-        success: true,
-      };
+      const text = decoder.decode(value, { stream: true });
+      const lines = text.split(/\r?\n/);
 
-      this.commandHistory.push(commandInfo);
+      for (const line of lines) {
+        if (this._simulationState() !== SimulationState.RUNNING) {
+          console.debug('Streaming interrotto dallo stato del simulatore');
+          return; // Interrompe il caricamento se lo stato non è RUNNING
+        }
 
-      // Update execution time
-      this._printerState.update((state) => ({
-        ...state,
-        executionTime: state.executionTime + executionTime,
-        currentCommandIndex: state.currentCommandIndex + 1,
-      }));
-
-      return commandInfo;
-    } catch (error) {
-      const executionTime = performance.now() - startTime;
-      const commandInfo: CommandExecutionInfo = {
-        index: this.commandHistory.length,
-        command,
-        executionTime,
-        cumulativeTime: this.printerState().executionTime + executionTime,
-        timestamp: startTimestamp,
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
-
-      this.commandHistory.push(commandInfo);
-      throw error;
-    }
-  }
-
-  private updatePrinterStateFromCommand(command: GCodeCommand): void {
-    const commandType = getCommandType(command);
-
-    switch (commandType) {
-      case 'movement':
-        this.updatePositionFromMovementCommand(command);
-        break;
-      case 'temperature':
-        this.updateTemperatureFromCommand(command);
-        break;
-      case 'fan':
-        this.updateFanFromCommand(command);
-        break;
-      case 'positioning':
-        this.updatePositioningModeFromCommand(command);
-        break;
-    }
-  }
-
-  private updatePositionFromMovementCommand(command: GCodeCommand): void {
-    this._printerState.update((state) => {
-      const newPosition = this.calculateNewPosition(state.position, command);
-
-      const updates: Partial<PrinterState> = {
-        position: newPosition,
-      };
-
-      // Update extruder position
-      if (command.parameters.has('E')) {
-        const newE = command.parameters.get('E')!;
-        updates.extruderPosition = state.absoluteExtrusion
-          ? newE
-          : state.extruderPosition + newE;
-        updates.isExtruding =
-          newE > (state.absoluteExtrusion ? state.extruderPosition : 0);
-      }
-
-      // Update feed rate
-      if (command.parameters.has('F')) {
-        updates.feedRate = command.parameters.get('F')!;
-      }
-
-      // Update layer based on Z position
-      if (newPosition.z !== state.position.z) {
-        const layerHeight = this.viewportSettings().layerHeight;
-        updates.currentLayer = Math.floor(newPosition.z / layerHeight);
-
-        // Emit layer change event
-        if (updates.currentLayer !== state.currentLayer) {
-          this.layerChangeSubject.next({
-            from: state.currentLayer,
-            to: updates.currentLayer,
-          });
+        const command = this.parseLine(line, this._commands().length + 1);
+        if (command) {
+          this._commands.set([...this._commands(), command]); // Aggiungi il comando alla lista
         }
       }
 
-      return { ...state, ...updates };
-    });
-  }
-
-  private updateTemperatureFromCommand(command: GCodeCommand): void {
-    this._printerState.update((state) => {
-      const updates: Partial<PrinterState> = {};
-
-      switch (command.command) {
-        case 'M104': // Set hotend temperature
-        case 'M109': // Set hotend temperature and wait
-          if (command.parameters.has('S')) {
-            updates.temperature = command.parameters.get('S')!;
-          }
-          break;
-        case 'M140': // Set bed temperature
-        case 'M190': // Set bed temperature and wait
-          if (command.parameters.has('S')) {
-            updates.bedTemperature = command.parameters.get('S')!;
-          }
-          break;
-      }
-
-      return { ...state, ...updates };
-    });
-  }
-
-  private updateFanFromCommand(command: GCodeCommand): void {
-    this._printerState.update((state) => {
-      let fanSpeed = state.fanSpeed;
-
-      switch (command.command) {
-        case 'M106': // Turn fan on
-          fanSpeed = command.parameters.has('S')
-            ? (command.parameters.get('S')! / 255) * 100
-            : 100;
-          break;
-        case 'M107': // Turn fan off
-          fanSpeed = 0;
-          break;
-      }
-
-      return { ...state, fanSpeed };
-    });
-  }
-
-  private updatePositioningModeFromCommand(command: GCodeCommand): void {
-    this._printerState.update((state) => {
-      const updates: Partial<PrinterState> = {};
-
-      switch (command.command) {
-        case 'G90': // Absolute positioning
-          updates.absolutePositioning = true;
-          break;
-        case 'G91': // Relative positioning
-          updates.absolutePositioning = false;
-          break;
-        case 'M82': // Absolute extrusion
-          updates.absoluteExtrusion = true;
-          break;
-        case 'M83': // Relative extrusion
-          updates.absoluteExtrusion = false;
-          break;
-        case 'G92': // Set position
-          if (command.parameters.has('E')) {
-            updates.extruderPosition = command.parameters.get('E')!;
-          }
-          break;
-      }
-
-      return { ...state, ...updates };
-    });
-  }
-
-  private async visualizeCommand(command: GCodeCommand): Promise<void> {
-    if (!isMovementCommand(command)) return;
-
-    // Create or update path visualization
-    const segment = this.createPathSegmentFromCurrentState(command);
-    this.addPathSegmentToVisualization(segment);
-
-    // Update nozzle position indicator
-    this.updateNozzleIndicator();
-  }
-
-  private createPathSegmentFromCurrentState(
-    command: GCodeCommand
-  ): PathSegment {
-    const state = this.printerState();
-    const newPosition = this.calculateNewPosition(state.position, command);
-    const newExtruderPos = command.parameters.has('E')
-      ? command.parameters.get('E')!
-      : state.extruderPosition;
-
-    return this.createPathSegment(
-      state.position,
-      newPosition,
-      state.extruderPosition,
-      newExtruderPos,
-      command
-    );
-  }
-
-  private addPathSegmentToVisualization(segment: PathSegment): void {
-    const contextId = segment.isExtrusion ? 'extrusion' : 'travel';
-    let context = this.pathRenderingContexts.get(contextId);
-
-    if (!context) {
-      context = this.createPathRenderingContext(contextId, segment.isExtrusion);
-      this.pathRenderingContexts.set(contextId, context);
-    }
-
-    this.addSegmentToContext(context, segment);
-  }
-
-  private createPathRenderingContext(
-    id: string,
-    isExtrusion: boolean
-  ): PathRenderingContext {
-    const geometry = new THREE.BufferGeometry();
-
-    const material = new THREE.LineBasicMaterial({
-      color: isExtrusion ? this.viewportSettings().filamentColor : '#888888',
-      linewidth: isExtrusion ? 2 : 1,
-      transparent: !isExtrusion,
-      opacity: isExtrusion ? 1.0 : 0.5,
-    });
-
-    const mesh = new THREE.Line(geometry, material);
-    this.scene.add(mesh);
-
-    return {
-      geometry,
-      material,
-      mesh,
-      vertexCount: 0,
-      lastUpdate: Date.now(),
-    };
-  }
-
-  private addSegmentToContext(
-    context: PathRenderingContext,
-    segment: PathSegment
-  ): void {
-    const vertices =
-      (context.geometry.getAttribute('position')?.array as Float32Array) ||
-      new Float32Array();
-    const newVertices = new Float32Array(vertices.length + 6); // 2 vertices * 3 components
-
-    // Copy existing vertices
-    newVertices.set(vertices);
-
-    // Add new segment vertices
-    const offset = vertices.length;
-    newVertices[offset] = segment.startPoint.x;
-    newVertices[offset + 1] = segment.startPoint.y;
-    newVertices[offset + 2] = segment.startPoint.z;
-    newVertices[offset + 3] = segment.endPoint.x;
-    newVertices[offset + 4] = segment.endPoint.y;
-    newVertices[offset + 5] = segment.endPoint.z;
-
-    context.geometry.setAttribute(
-      'position',
-      new THREE.BufferAttribute(newVertices, 3)
-    );
-    context.geometry.attributes.position.needsUpdate = true;
-    context.vertexCount += 2;
-    context.lastUpdate = Date.now();
-  }
-
-  private updateNozzleIndicator(): void {
-    if (!this.nozzleIndicator) {
-      this.createNozzleIndicator();
-    }
-
-    if (this.nozzleIndicator) {
-      const position = this.printerState().position;
-      this.nozzleIndicator.position.set(position.x, position.z, position.y);
-    }
-  }
-
-  private createNozzleIndicator(): void {
-    const geometry = new THREE.SphereGeometry(1, 8, 8);
-    const material = new THREE.MeshBasicMaterial({
-      color: 0xff4444,
-      transparent: true,
-      opacity: 0.8,
-    });
-
-    this.nozzleIndicator = new THREE.Mesh(geometry, material);
-    this.scene.add(this.nozzleIndicator);
-  }
-
-  private updateProgress(commandInfo: CommandExecutionInfo): void {
-    const state = this.printerState();
-    const progress = (state.currentCommandIndex / state.totalCommands) * 100;
-
-    this._printerState.update((current) => ({
-      ...current,
-      printProgress: progress,
-      estimatedTimeRemaining: Math.max(
-        0,
-        current.estimatedTimeRemaining - commandInfo.executionTime
-      ),
-    }));
-
-    this.progressUpdateSubject.next(progress);
-  }
-
-  private fastForwardToCommand(targetIndex: number): void {
-    // Fast-forward by simulating commands without full visualization
-    const commands = this.streamingService.commandBuffer();
-    const currentIndex = this.printerState().currentCommandIndex;
-
-    if (targetIndex <= currentIndex) {
-      // Going backward - need to rebuild state from beginning
-      this.rebuildStateToIndex(targetIndex);
-    } else {
-      // Going forward - simulate commands
-      for (let i = currentIndex; i < targetIndex && i < commands.length; i++) {
-        this.simulateCommand(commands[i]);
-      }
-    }
-
-    this._printerState.update((state) => ({
-      ...state,
-      currentCommandIndex: targetIndex,
-      printProgress: (targetIndex / state.totalCommands) * 100,
-    }));
-  }
-
-  private simulateCommand(command: GCodeCommand): void {
-    // Simplified command execution for fast-forward
-    this.updatePrinterStateFromCommand(command);
-
-    // Add to history
-    const executionInfo: CommandExecutionInfo = {
-      index: this.commandHistory.length,
-      command,
-      executionTime: 0.01, // Fast execution time
-      cumulativeTime: this.printerState().executionTime + 0.01,
-      timestamp: new Date(),
-      success: true,
-    };
-
-    this.commandHistory.push(executionInfo);
-  }
-
-  private rebuildStateToIndex(targetIndex: number): void {
-    // Reset to beginning and simulate up to target
-    this.resetSimulation();
-    const commands = this.streamingService.commandBuffer();
-
-    for (let i = 0; i < targetIndex && i < commands.length; i++) {
-      this.simulateCommand(commands[i]);
-    }
-  }
-
-  private rebuildVisualization(): void {
-    this.clearVisualization();
-
-    // Rebuild visualization from path segments
-    for (const segment of this.pathSegments) {
-      this.addPathSegmentToVisualization(segment);
-    }
-
-    this.updateNozzleIndicator();
-  }
-
-  private clearVisualization(): void {
-    // Remove all path rendering contexts
-    for (const context of this.pathRenderingContexts.values()) {
-      this.scene.remove(context.mesh);
-      context.geometry.dispose();
-      context.material.dispose();
-    }
-    this.pathRenderingContexts.clear();
-
-    // Remove nozzle indicator
-    if (this.nozzleIndicator) {
-      this.scene.remove(this.nozzleIndicator);
-      this.nozzleIndicator = null;
-    }
-  }
-
-  private initializeScene(): void {
-    // Setup basic scene
-    this.scene.background = new THREE.Color(0x1a1a1a);
-
-    // Create build plate
-    this.createBuildPlate();
-
-    // Add coordinate system helper (optional)
-    if (this.viewportSettings().showBuildPlate) {
-      const axesHelper = new THREE.AxesHelper(50);
-      this.scene.add(axesHelper);
-    }
-  }
-
-  private createBuildPlate(): void {
-    const buildVolume = this.viewportSettings().buildVolume;
-    const geometry = new THREE.PlaneGeometry(buildVolume.x, buildVolume.y);
-    const material = new THREE.MeshBasicMaterial({
-      color: 0x333333,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.3,
-    });
-
-    this.buildPlate = new THREE.Mesh(geometry, material);
-    this.buildPlate.rotation.x = -Math.PI / 2;
-    this.buildPlate.position.set(buildVolume.x / 2, 0, buildVolume.y / 2);
-
-    if (this.viewportSettings().showBuildPlate) {
-      this.scene.add(this.buildPlate);
-    }
-  }
-
-  private validateViewportSettings(settings: ViewportSettings): void {
-    if (settings.animationSpeed < 0.1 || settings.animationSpeed > 100) {
-      throw new Error('Animation speed must be between 0.1 and 100');
-    }
-
-    if (settings.layerHeight < 0.01 || settings.layerHeight > 2) {
-      throw new Error('Layer height must be between 0.01 and 2mm');
-    }
-
-    if (settings.maxPathPoints < 1000 || settings.maxPathPoints > 1000000) {
-      throw new Error('Max path points must be between 1,000 and 1,000,000');
-    }
-  }
-
-  private applyViewportSettings(settings: ViewportSettings): void {
-    // Update build plate visibility
-    if (this.buildPlate) {
-      this.buildPlate.visible = settings.showBuildPlate;
-    }
-
-    // Update path colors
-    for (const context of this.pathRenderingContexts.values()) {
-      if (context.material instanceof THREE.LineBasicMaterial) {
-        context.material.color.setStyle(settings.filamentColor);
-      }
-    }
-
-    // Update build plate size if changed
-    if (this.buildPlate) {
-      this.updateBuildPlateGeometry(settings.buildVolume);
-    }
-  }
-
-  private updateBuildPlateGeometry(buildVolume: Vector3D): void {
-    if (!this.buildPlate) return;
-
-    // Dispose old geometry
-    this.buildPlate.geometry.dispose();
-
-    // Create new geometry
-    const geometry = new THREE.PlaneGeometry(buildVolume.x, buildVolume.y);
-    this.buildPlate.geometry = geometry;
-    this.buildPlate.position.set(buildVolume.x / 2, 0, buildVolume.y / 2);
-  }
-
-  private updateSimulationState(state: SimulationState): void {
-    this._simulationState.set(state);
-    this.stateChangeSubject.next(state);
-  }
-
-  private handleError(
-    type: SimulatorError['type'],
-    message: string,
-    details?: unknown
-  ): void {
-    const error = createSimulatorError(
-      type,
-      message,
-      details ? { originalError: details } : undefined
-    );
-    this.errorSubject.next(error);
-  }
-
-  private handleExecutionError(error: unknown): void {
-    this.updateSimulationState(SimulationState.ERROR);
-    this.isExecuting = false;
-
-    this.handleError(
-      'execution',
-      error instanceof Error ? error.message : 'Unknown execution error',
-      error
-    );
-  }
-
-  private setupPerformanceMonitoring(): void {
-    if (!this.config().enablePerformanceMonitoring) return;
-
-    // Monitor FPS and performance
-    timer(0, 1000)
-      .pipe(
-        map(() => this.calculatePerformanceMetrics()),
-        distinctUntilChanged(
-          (prev, curr) =>
-            prev.fps === curr.fps && prev.renderTime === curr.renderTime
-        ),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe((metrics) => {
-        this._performanceMetrics.set(metrics);
-
-        // Trigger automatic quality adjustment if enabled
-        if (this.config().enableAutomaticQualityAdjustment) {
-          this.adjustQualityBasedOnPerformance(metrics);
-        }
-      });
-  }
-
-  private calculatePerformanceMetrics(): PerformanceMetrics {
-    const currentTime = Date.now();
-    const deltaTime = currentTime - this.lastPerformanceCheck;
-
-    // Calculate FPS from frame counter (this would need to be updated by render loop)
-    const fps =
-      deltaTime > 0 ? Math.round((this.frameCounter * 1000) / deltaTime) : 60;
-    this.frameCounter = 0;
-    this.lastPerformanceCheck = currentTime;
-
-    // Calculate average render time
-    const avgRenderTime =
-      this.renderTimeHistory.length > 0
-        ? this.renderTimeHistory.reduce((a, b) => a + b, 0) /
-          this.renderTimeHistory.length
-        : 16.67;
-
-    // Get memory usage
-    const memoryUsage = this.getMemoryUsage();
-
-    return {
-      fps,
-      pathObjects: this.pathRenderingContexts.size,
-      memoryUsage,
-      renderTime: avgRenderTime,
-      commandProcessingRate: this.streamingService.processingSpeed(),
-      bufferUtilization: this.streamingService.bufferUtilization(),
-    };
-  }
-
-  private getMemoryUsage(): number {
-    try {
-      const memory = (performance as any).memory;
-      return memory ? memory.usedJSHeapSize : 0;
-    } catch {
-      return 0;
-    }
-  }
-
-  private adjustQualityBasedOnPerformance(metrics: PerformanceMetrics): void {
-    const targetFPS = this.config().targetFPS;
-
-    if (metrics.fps < targetFPS - 5) {
-      // Performance is poor, reduce quality
-      this.warningSubject.next(
-        'Performance degraded, reducing quality settings'
-      );
-
-      const currentSettings = this.viewportSettings();
-      this.updateViewportSettings({
-        maxPathPoints: Math.max(
-          1000,
-          Math.floor(currentSettings.maxPathPoints * 0.8)
-        ),
-        enableShadows: false,
-        antialiasing: false,
-      });
-    } else if (metrics.fps > targetFPS + 10) {
-      // Performance is good, can increase quality
-      const currentSettings = this.viewportSettings();
-      if (currentSettings.maxPathPoints < 50000) {
-        this.updateViewportSettings({
-          maxPathPoints: Math.min(
-            50000,
-            Math.floor(currentSettings.maxPathPoints * 1.2)
-          ),
+      stream
+        .read()
+        .then(processChunk)
+        .catch((error) => {
+          this._errorMessage.set(
+            `Errore durante la lettura del G-code: ${error}`
+          );
         });
-      }
-    }
-  }
+    };
 
-  private setupStreamingIntegration(): void {
-    // Subscribe to streaming service events
-    this.streamingService.commandChunks$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((chunk) => {
-        // Handle chunk processing if needed
-        console.log(
-          `Processing chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks}`
+    this._simulationState.set(SimulationState.IDLE); // Inizializza lo stato su IDLE
+
+    stream
+      .read()
+      .then(processChunk)
+      .catch((error) => {
+        this._errorMessage.set(
+          `Errore durante la lettura del G-code: ${error}`
         );
       });
-
-    // Subscribe to streaming errors
-    this.streamingService.errors$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((error) => {
-        this.handleError(error.type, error.message, error.details);
-      });
-  }
-
-  private setupErrorHandling(): void {
-    // Global error handling for uncaught errors
-    fromEvent(window, 'error')
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((event: ErrorEvent) => {
-        this.handleError('system', `Global error: ${event.message}`, {
-          filename: event.filename,
-          lineno: event.lineno,
-          colno: event.colno,
-        });
-      });
-  }
-
-  private setupMemoryManagement(): void {
-    // Monitor memory usage and clean up if needed
-    timer(0, 5000)
-      .pipe(
-        // Check every 5 seconds
-        filter(() => this.memoryPressure() > 0.8),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(() => {
-        this.performMemoryCleanup();
-      });
-  }
-
-  private performMemoryCleanup(): void {
-    this.warningSubject.next('High memory usage detected, performing cleanup');
-
-    // Remove old command history entries if too many
-    if (this.commandHistory.length > 10000) {
-      this.commandHistory = this.commandHistory.slice(-5000);
-    }
-
-    // Optimize path rendering contexts
-    this.optimizePathRenderingContexts();
-
-    // Force garbage collection if available
-    if ('gc' in window && typeof (window as any).gc === 'function') {
-      (window as any).gc();
-    }
-  }
-
-  private optimizePathRenderingContexts(): void {
-    for (const [id, context] of this.pathRenderingContexts.entries()) {
-      if (context.vertexCount > this.viewportSettings().maxPathPoints) {
-        // Reduce vertex count by removing every other vertex
-        this.decimatePathContext(context);
-      }
-    }
-  }
-
-  private decimatePathContext(context: PathRenderingContext): void {
-    const vertices = context.geometry.getAttribute('position')
-      .array as Float32Array;
-    const decimatedVertices = new Float32Array(Math.floor(vertices.length / 2));
-
-    // Keep every other vertex
-    for (let i = 0, j = 0; i < vertices.length; i += 6, j += 3) {
-      if (j < decimatedVertices.length) {
-        decimatedVertices[j] = vertices[i];
-        decimatedVertices[j + 1] = vertices[i + 1];
-        decimatedVertices[j + 2] = vertices[i + 2];
-      }
-    }
-
-    context.geometry.setAttribute(
-      'position',
-      new THREE.BufferAttribute(decimatedVertices, 3)
-    );
-    context.vertexCount = Math.floor(context.vertexCount / 2);
   }
 }

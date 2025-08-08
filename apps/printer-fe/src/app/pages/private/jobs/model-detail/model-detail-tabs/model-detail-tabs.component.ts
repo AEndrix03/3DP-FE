@@ -48,8 +48,19 @@ export class ModelDetailTabsComponent {
     private readonly slicingPropertyService: SlicingPropertyService,
     private readonly slicingQueueService: SlicingQueueService
   ) {
-    effect(() => this.reloadResults(this.model()?.resourceId));
-    effect(() => this.reloadProfiles(this.userStore.user()?.id));
+    effect(() =>
+      this.slicingService
+        .getSlicingResultBySourceId(this.model().resourceId)
+        .pipe(tap((res) => this.slicingResults.set(res)))
+        .subscribe()
+    );
+
+    effect(() =>
+      this.slicingPropertyService
+        .getUserSlicingProfiles(this.userStore.user().id)
+        .pipe(tap((res) => this.slicingProfiles.set(res)))
+        .subscribe()
+    );
   }
 
   protected openSlicingResultDetail(id: string) {
@@ -73,7 +84,7 @@ export class ModelDetailTabsComponent {
 
     this.ref.onClose
       .pipe(
-        filter((res) => res != null),
+        filter((res) => res !== null),
         map((slicingPropertyId: string) => ({
           modelId: this.model().id,
           slicingPropertyId,
@@ -84,23 +95,5 @@ export class ModelDetailTabsComponent {
         )
       )
       .subscribe();
-  }
-
-  private reloadResults(modelId: string) {
-    if (modelId != null) {
-      this.slicingService
-        .getSlicingResultBySourceId(modelId)
-        .pipe(tap((res) => this.slicingResults.set(res)))
-        .subscribe();
-    }
-  }
-
-  private reloadProfiles(userId: string) {
-    if (userId != null) {
-      this.slicingPropertyService
-        .getUserSlicingProfiles(userId)
-        .pipe(tap((res) => this.slicingProfiles.set(res)))
-        .subscribe();
-    }
   }
 }

@@ -229,13 +229,10 @@ export class SlicingProfileDetailComponent implements OnInit {
       bedTempC: [null, [Validators.min(0), Validators.max(150)]],
 
       advancedSettings: ['{}'],
-      slicerId: ['default-slicer-id', Validators.required], // Temporarily set a default value
+      slicerId: [''], // Removed Validators.required - this should be set by backend
       isPublic: [false, Validators.required],
       isActive: [true, Validators.required],
       materialIds: [[]],
-
-      // Backend required field that's not in the UI - will be set by backend
-      createdByUserId: [null], // This should be set by the backend from the authenticated user
     });
   }
 
@@ -365,22 +362,11 @@ export class SlicingProfileDetailComponent implements OnInit {
 
   protected onSaveClick(): void {
     if (this.profileForm.valid) {
-      const formValue = this.formValue;
-
-      const payload: Partial<SlicingPropertyDto> = {
-        ...formValue,
-        slicerId:
-          formValue.slicerId === 'default-slicer-id'
-            ? null
-            : formValue.slicerId,
-      };
-
-      delete (payload as any).createdByUserId;
-
-      console.log('Sending payload:', payload);
-      this.ref.close(payload);
+      this.ref.close(this.formValue);
     } else {
       this.profileForm.markAllAsTouched();
+
+      // Debug: log form errors to console
       console.log('Form is invalid. Errors:', this.getFormValidationErrors());
     }
   }

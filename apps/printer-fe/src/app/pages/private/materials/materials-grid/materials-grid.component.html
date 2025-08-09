@@ -54,16 +54,16 @@
         <div class="flex items-center gap-2 mb-2">
           <span
             class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-            [class]="getMaterialTypeBadgeClass(item.type)"
+            [class]="getMaterialTypeBadgeClass(item.type.name)"
           >
-            {{ item.type }}
+            {{ item.type.name }}
           </span>
         </div>
 
         <!-- Brand -->
         <div class="flex items-center mb-2 text-xs text-gray-600">
           <i class="pi pi-building mr-1"></i>
-          <span>{{ item.brand }}</span>
+          <span>{{ item.brand.name }}</span>
         </div>
 
         <!-- Temperature Info -->

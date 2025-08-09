@@ -2,8 +2,8 @@ import {
   Component,
   computed,
   effect,
-  input,
-  InputSignal,
+  inject,
+  OnDestroy,
   OnInit,
   Signal,
 } from '@angular/core';
@@ -26,11 +26,14 @@ import { CardModule } from 'primeng/card';
 import { DividerModule } from 'primeng/divider';
 import { ButtonModule } from 'primeng/button';
 
-import { DynamicDialogRef } from 'primeng/dynamicdialog';
+import { DynamicDialogConfig, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { MaterialDto } from '../../../../core/models/material.models';
+import { MaterialService } from '../../../../services/material.service';
+import { Observable, shareReplay, Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'printer-material-detail',
+  standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -45,47 +48,45 @@ import { MaterialDto } from '../../../../core/models/material.models';
   ],
   templateUrl: './material-detail.component.html',
 })
-export class MaterialDetailComponent implements OnInit {
-  public readonly material: InputSignal<MaterialDto | null> = input.required();
+export class MaterialDetailComponent implements OnInit, OnDestroy {
+  private readonly config = inject(DynamicDialogConfig);
+  private readonly destroy$ = new Subject<void>();
 
+  protected readonly material: MaterialDto | null =
+    this.config.data?.material || null;
   protected readonly isNew: Signal<boolean> = computed(
-    () => this.material() == null
+    () => this.material == null
   );
 
   protected materialForm!: FormGroup;
 
-  // Form options
-  protected readonly materialTypes = [
-    { label: 'PLA', value: 'PLA' },
-    { label: 'ABS', value: 'ABS' },
-    { label: 'PETG', value: 'PETG' },
-    { label: 'TPU', value: 'TPU' },
-    { label: 'ASA', value: 'ASA' },
-    { label: 'PC', value: 'PC' },
-    { label: 'NYLON', value: 'NYLON' },
-    { label: 'PVA', value: 'PVA' },
-    { label: 'HIPS', value: 'HIPS' },
-    { label: 'WOOD', value: 'WOOD' },
-    { label: 'METAL', value: 'METAL' },
-    { label: 'CARBON_FIBER', value: 'CARBON_FIBER' },
-    { label: 'OTHER', value: 'OTHER' },
-  ];
+  // Async dropdown options using existing MaterialService
+  protected readonly materialTypeOptions$: Observable<string[]>;
+  protected readonly materialBrandOptions$: Observable<string[]>;
 
+  // Form options (keeping diameter as static since it's standardized)
   protected readonly diameterOptions = [
     { label: '1.75mm', value: '1.75' },
     { label: '2.85mm', value: '2.85' },
     { label: '3.00mm', value: '3.00' },
   ];
 
-  protected readonly booleanOptions = [
-    { label: 'Yes', value: 'true' },
-    { label: 'No', value: 'false' },
-  ];
+  constructor(
+    private ref: DynamicDialogRef,
+    private readonly fb: FormBuilder,
+    private readonly materialService: MaterialService
+  ) {
+    // Initialize async streams using existing service
+    this.materialTypeOptions$ = this.materialService
+      .getMaterialTypes()
+      .pipe(shareReplay(1), takeUntil(this.destroy$));
+    this.materialBrandOptions$ = this.materialService
+      .getMaterialBrands()
+      .pipe(shareReplay(1), takeUntil(this.destroy$));
 
-  constructor(private ref: DynamicDialogRef, private readonly fb: FormBuilder) {
     // Form state management effects
     effect(() => {
-      if (this.materialForm && this.material()) {
+      if (this.materialForm && this.material) {
         this.loadMaterialData();
       }
     });
@@ -96,17 +97,25 @@ export class MaterialDetailComponent implements OnInit {
     this.loadMaterialData();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   private initializeForm(): void {
     this.materialForm = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(128)]],
-      type: ['PLA', Validators.required],
-      brand: ['', [Validators.required, Validators.maxLength(64)]],
+
+      // Changed from hardcoded to dropdown values
+      type: [null, Validators.required],
+      brand: [null, Validators.required],
+
       densityGCm3: [
-        '1.24',
+        1.24,
         [Validators.required, Validators.min(0.1), Validators.max(20)],
       ],
       diameterMm: ['1.75', Validators.required],
-      costPerKg: ['25.00', [Validators.required, Validators.min(0)]],
+      costPerKg: [25.0, [Validators.required, Validators.min(0)]],
       recommendedExtruderTempMinC: [
         190,
         [Validators.required, Validators.min(150), Validators.max(350)],
@@ -119,11 +128,11 @@ export class MaterialDetailComponent implements OnInit {
         60,
         [Validators.required, Validators.min(0), Validators.max(150)],
       ],
-      requiresHeatedBed: ['false', Validators.required],
-      requiresChamberHeating: ['false', Validators.required],
-      supportsSoluble: ['false', Validators.required],
+      requiresHeatedBed: [false, Validators.required],
+      requiresChamberHeating: [false, Validators.required],
+      supportsSoluble: [false, Validators.required],
       shrinkageFactor: [
-        '0.02',
+        0.002,
         [Validators.required, Validators.min(0), Validators.max(1)],
       ],
       image: [''],
@@ -131,6 +140,27 @@ export class MaterialDetailComponent implements OnInit {
 
     // Add cross-validation for temperature range
     this.materialForm.addValidators(this.temperatureRangeValidator());
+  }
+
+  private loadMaterialData(): void {
+    if (this.material) {
+      this.materialForm.patchValue({
+        name: this.material.name,
+        type: this.material.typeName || this.material.type?.name,
+        brand: this.material.brandName || this.material.brand?.name,
+        densityGCm3: parseFloat(this.material.densityGCm3 || '1.24'),
+        diameterMm: this.material.diameterMm,
+        costPerKg: parseFloat(this.material.costPerKg || '25'),
+        recommendedExtruderTempMinC: this.material.recommendedExtruderTempMinC,
+        recommendedExtruderTempMaxC: this.material.recommendedExtruderTempMaxC,
+        recommendedBedTempC: this.material.recommendedBedTempC,
+        requiresHeatedBed: this.material.requiresHeatedBed === 'true',
+        requiresChamberHeating: this.material.requiresChamberHeating === 'true',
+        supportsSoluble: this.material.supportsSoluble === 'true',
+        shrinkageFactor: parseFloat(this.material.shrinkageFactor || '0.002'),
+        image: this.material.image,
+      });
+    }
   }
 
   private temperatureRangeValidator(): ValidatorFn {
@@ -146,49 +176,25 @@ export class MaterialDetailComponent implements OnInit {
     };
   }
 
-  private loadMaterialData(): void {
-    const currentMaterial = this.material();
-    if (currentMaterial) {
-      this.materialForm.patchValue({
-        name: currentMaterial.name,
-        type: currentMaterial.type,
-        brand: currentMaterial.brand,
-        densityGCm3: currentMaterial.densityGCm3,
-        diameterMm: currentMaterial.diameterMm,
-        costPerKg: currentMaterial.costPerKg,
-        recommendedExtruderTempMinC:
-          currentMaterial.recommendedExtruderTempMinC,
-        recommendedExtruderTempMaxC:
-          currentMaterial.recommendedExtruderTempMaxC,
-        recommendedBedTempC: currentMaterial.recommendedBedTempC,
-        requiresHeatedBed: currentMaterial.requiresHeatedBed,
-        requiresChamberHeating: currentMaterial.requiresChamberHeating,
-        supportsSoluble: currentMaterial.supportsSoluble,
-        shrinkageFactor: currentMaterial.shrinkageFactor,
-        image: currentMaterial.image,
-      });
-    }
-  }
-
-  // Form getters and methods
-  protected get formValue(): any {
+  protected get formValue(): MaterialDto {
+    const value = this.materialForm.value;
     return {
-      ...this.materialForm.value,
-      id: this.material()?.id,
+      ...value,
+      id: this.material?.id,
+      densityGCm3: value.densityGCm3?.toString(),
+      costPerKg: value.costPerKg?.toString(),
+      shrinkageFactor: value.shrinkageFactor?.toString(),
+      requiresHeatedBed: value.requiresHeatedBed?.toString(),
+      requiresChamberHeating: value.requiresChamberHeating?.toString(),
+      supportsSoluble: value.supportsSoluble?.toString(),
+      // Keep legacy fields for backward compatibility
+      typeName: value.type,
+      brandName: value.brand,
     };
   }
 
   protected get isFormValid(): boolean {
     return this.materialForm.valid;
-  }
-
-  protected get isDirty(): boolean {
-    return this.materialForm.dirty;
-  }
-
-  protected resetForm(): void {
-    this.materialForm.reset();
-    this.loadMaterialData();
   }
 
   protected getFieldError(fieldName: string): string | null {
@@ -202,7 +208,6 @@ export class MaterialDetailComponent implements OnInit {
         return `Maximum length is ${errors['maxlength'].requiredLength}`;
     }
 
-    // Check form-level validation errors
     if (
       fieldName === 'recommendedExtruderTempMaxC' &&
       this.materialForm.hasError('temperatureRange')
@@ -222,7 +227,6 @@ export class MaterialDetailComponent implements OnInit {
       this.ref.close(this.formValue);
     } else {
       this.materialForm.markAllAsTouched();
-      console.log('Form is invalid. Errors:', this.getFormValidationErrors());
     }
   }
 
@@ -230,7 +234,11 @@ export class MaterialDetailComponent implements OnInit {
     this.ref.close(null);
   }
 
-  // Helper methods
+  protected onImageError(event: any): void {
+    event.target.style.display = 'none';
+  }
+
+  // Helper method to get material type icon (remains the same)
   protected getMaterialTypeIcon(type: string): string {
     const iconMap: { [key: string]: string } = {
       PLA: 'pi-leaf',
@@ -248,28 +256,5 @@ export class MaterialDetailComponent implements OnInit {
     };
 
     return iconMap[type] || 'pi-circle';
-  }
-
-  protected onImageError(event: any): void {
-    event.target.style.display = 'none';
-  }
-
-  // Debug method to help identify validation issues
-  private getFormValidationErrors(): any {
-    const formErrors: any = {};
-
-    Object.keys(this.materialForm.controls).forEach((key) => {
-      const controlErrors = this.materialForm.get(key)?.errors;
-      if (controlErrors) {
-        formErrors[key] = controlErrors;
-      }
-    });
-
-    // Add form-level errors
-    if (this.materialForm.errors) {
-      formErrors['form'] = this.materialForm.errors;
-    }
-
-    return formErrors;
   }
 }

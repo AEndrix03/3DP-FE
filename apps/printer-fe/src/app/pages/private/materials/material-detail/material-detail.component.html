@@ -45,12 +45,13 @@
               <p-dropdown
                 id="type"
                 formControlName="type"
-                [options]="materialTypes"
-                optionLabel="label"
-                optionValue="value"
+                [options]="materialTypeOptions$ | async"
                 placeholder="Select material type"
+                [showClear]="false"
+                [filter]="true"
                 class="w-full"
                 [class.ng-invalid]="getFieldError('type')"
+                [loading]="(materialTypeOptions$ | async) === null"
               />
               <small class="text-red-500" *ngIf="getFieldError('type')">
                 {{ getFieldError('type') }}
@@ -59,14 +60,16 @@
 
             <div class="space-y-2">
               <label for="brand" class="block text-sm font-medium text-gray-700">Brand *</label>
-              <input
+              <p-dropdown
                 id="brand"
-                type="text"
-                pInputText
                 formControlName="brand"
-                placeholder="Enter brand name"
+                [options]="materialBrandOptions$ | async"
+                placeholder="Select brand"
+                [showClear]="false"
+                [filter]="true"
                 class="w-full"
                 [class.ng-invalid]="getFieldError('brand')"
+                [loading]="(materialBrandOptions$ | async) === null"
               />
               <small class="text-red-500" *ngIf="getFieldError('brand')">
                 {{ getFieldError('brand') }}

@@ -81,10 +81,18 @@ export class SlicingProfileDetailComponent implements OnInit {
   protected selectedMaterialType = signal<string | null>(null);
   protected selectedMaterialIds = signal<string[]>([]);
 
-  // Computed properties for materials
   protected readonly materialTypeOptions = computed(() => {
-    const types = [...new Set(this.avaiableMaterials().map((m) => m.type))];
-    return types.map((type) => ({ label: type, value: type }));
+    const types = [
+      ...new Set(
+        this.avaiableMaterials()
+          .map((m) => m.typeName || m.type?.name)
+          .filter(Boolean)
+      ),
+    ];
+    return [
+      { label: 'All Types', value: null },
+      ...types.map((type) => ({ label: type, value: type })),
+    ];
   });
 
   protected readonly filteredMaterials = computed(() => {
@@ -92,13 +100,16 @@ export class SlicingProfileDetailComponent implements OnInit {
     const selectedType = this.selectedMaterialType();
 
     return this.avaiableMaterials().filter((material) => {
+      const materialType = material.typeName || material.type?.name || '';
+      const materialBrand = material.brandName || material.brand?.name || '';
+
       const matchesSearch =
         !searchTerm ||
         material.name.toLowerCase().includes(searchTerm) ||
-        material.brand.toLowerCase().includes(searchTerm) ||
-        material.type.toLowerCase().includes(searchTerm);
+        materialBrand.toLowerCase().includes(searchTerm) ||
+        materialType.toLowerCase().includes(searchTerm);
 
-      const matchesType = !selectedType || material.type === selectedType;
+      const matchesType = !selectedType || materialType === selectedType;
 
       return matchesSearch && matchesType;
     });
@@ -301,7 +312,7 @@ export class SlicingProfileDetailComponent implements OnInit {
     return typeMap[type.toUpperCase()] || 'secondary';
   }
 
-  protected getMaterialTypeBadgeClass(type: string): string {
+  protected getMaterialTypeBadgeClass(typeName: string): string {
     const typeClassMap: { [key: string]: string } = {
       PLA: 'bg-green-100 text-green-800',
       ABS: 'bg-blue-100 text-blue-800',
@@ -313,7 +324,7 @@ export class SlicingProfileDetailComponent implements OnInit {
       PVA: 'bg-cyan-100 text-cyan-800',
     };
 
-    return typeClassMap[type.toUpperCase()] || 'bg-gray-100 text-gray-800';
+    return typeClassMap[typeName?.toUpperCase()] || 'bg-gray-100 text-gray-800';
   }
 
   protected getMaterialNameById(materialId: string): string {

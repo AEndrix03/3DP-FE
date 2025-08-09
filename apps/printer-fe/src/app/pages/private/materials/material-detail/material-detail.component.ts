@@ -2,10 +2,12 @@ import {
   Component,
   computed,
   effect,
+  ElementRef,
   inject,
   OnDestroy,
   OnInit,
   Signal,
+  ViewChild,
 } from '@angular/core';
 import {
   FormBuilder,
@@ -25,11 +27,14 @@ import { TextareaModule } from 'primeng/textarea';
 import { CardModule } from 'primeng/card';
 import { DividerModule } from 'primeng/divider';
 import { ButtonModule } from 'primeng/button';
+import { MessageService } from 'primeng/api';
 
 import { DynamicDialogConfig, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { MaterialDto } from '../../../../core/models/material.models';
 import { MaterialService } from '../../../../services/material.service';
-import { Observable, shareReplay, Subject, takeUntil } from 'rxjs';
+import { FileService } from '../../../../services/file.service';
+import { UriCostants } from '../../../../core/costants/uri-costants';
+import { finalize, Observable, shareReplay, Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'printer-material-detail',
@@ -49,8 +54,11 @@ import { Observable, shareReplay, Subject, takeUntil } from 'rxjs';
   templateUrl: './material-detail.component.html',
 })
 export class MaterialDetailComponent implements OnInit, OnDestroy {
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+
   private readonly config = inject(DynamicDialogConfig);
   private readonly destroy$ = new Subject<void>();
+  private readonly messageService = inject(MessageService);
 
   protected readonly material: MaterialDto | null =
     this.config.data?.material || null;
@@ -59,6 +67,7 @@ export class MaterialDetailComponent implements OnInit, OnDestroy {
   );
 
   protected materialForm!: FormGroup;
+  protected isUploadingImage = false;
 
   // Async dropdown options using existing MaterialService
   protected readonly materialTypeOptions$: Observable<string[]>;
@@ -74,7 +83,8 @@ export class MaterialDetailComponent implements OnInit, OnDestroy {
   constructor(
     private ref: DynamicDialogRef,
     private readonly fb: FormBuilder,
-    private readonly materialService: MaterialService
+    private readonly materialService: MaterialService,
+    private readonly fileService: FileService
   ) {
     // Initialize async streams using existing service
     this.materialTypeOptions$ = this.materialService
@@ -135,6 +145,7 @@ export class MaterialDetailComponent implements OnInit, OnDestroy {
         0.002,
         [Validators.required, Validators.min(0), Validators.max(1)],
       ],
+      // Store image ID
       image: [''],
     });
 
@@ -158,7 +169,8 @@ export class MaterialDetailComponent implements OnInit, OnDestroy {
         requiresChamberHeating: this.material.requiresChamberHeating === 'true',
         supportsSoluble: this.material.supportsSoluble === 'true',
         shrinkageFactor: parseFloat(this.material.shrinkageFactor || '0.002'),
-        image: this.material.image,
+        // Image field contains only the ID
+        image: this.material.image || '',
       });
     }
   }
@@ -174,6 +186,124 @@ export class MaterialDetailComponent implements OnInit, OnDestroy {
 
       return null;
     };
+  }
+
+  /**
+   * Get image URL from ID
+   */
+  protected getImageUrl(imageId: string | null): string | null {
+    if (!imageId) return null;
+    return `${UriCostants.filesUrl}/download?id=${imageId}`;
+  }
+
+  /**
+   * Get current image URL from form
+   */
+  protected getCurrentImageUrl(): string | null {
+    const imageId = this.materialForm.get('image')?.value;
+    return this.getImageUrl(imageId);
+  }
+
+  /**
+   * Check if material has an image
+   */
+  protected get hasImage(): boolean {
+    return !!this.materialForm.get('image')?.value;
+  }
+
+  /**
+   * Opens file input dialog for image selection
+   */
+  protected onImportImageClick(): void {
+    this.fileInput.nativeElement.click();
+  }
+
+  /**
+   * Remove the current image
+   */
+  protected onRemoveImageClick(): void {
+    this.materialForm.patchValue({ image: '' });
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Image Removed',
+      detail: 'Material image has been removed',
+    });
+  }
+
+  /**
+   * Handles file selection and upload
+   */
+  protected onFileSelected(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Invalid File',
+        detail: 'Please select a valid image file',
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSizeInMB = 5;
+    if (file.size > maxSizeInMB * 1024 * 1024) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'File Too Large',
+        detail: `File size must be less than ${maxSizeInMB}MB`,
+      });
+      return;
+    }
+
+    this.uploadImage(file);
+
+    // Clear the input so the same file can be selected again
+    target.value = '';
+  }
+
+  /**
+   * Uploads the selected image and updates the form
+   */
+  private uploadImage(file: File): void {
+    this.isUploadingImage = true;
+
+    this.fileService
+      .uploadImage(file)
+      .pipe(
+        finalize(() => {
+          this.isUploadingImage = false;
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (imageId: string) => {
+          // Update the form with the new image ID
+          this.materialForm.patchValue({
+            image: imageId,
+          });
+
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Upload Successful',
+            detail: 'Image uploaded successfully',
+          });
+        },
+        error: (error) => {
+          console.error('Image upload failed:', error);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Upload Failed',
+            detail: 'Failed to upload image. Please try again.',
+          });
+        },
+      });
   }
 
   protected get formValue(): MaterialDto {

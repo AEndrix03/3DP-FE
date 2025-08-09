@@ -15,6 +15,15 @@ export class FileService {
     return this.http.post<string>(`${UriCostants.filesUrl}/upload`, formData);
   }
 
+  public uploadImage(file: File): Observable<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<string>(
+      `${UriCostants.filesUrl}/upload/image`,
+      formData
+    );
+  }
+
   public download(id: string): Observable<Blob> {
     const params = new HttpParams().set('id', id);
 

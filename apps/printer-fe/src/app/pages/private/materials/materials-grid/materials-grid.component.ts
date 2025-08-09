@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Button } from 'primeng/button';
 import { MaterialDto } from '../../../../core/models/material.models';
+import { UriCostants } from '../../../../core/costants/uri-costants';
 
 @Component({
   selector: 'printer-materials-grid',
@@ -14,6 +15,28 @@ export class MaterialsGridComponent {
 
   @Output() viewDetail = new EventEmitter<MaterialDto>();
   @Output() delete = new EventEmitter<string>();
+
+  /**
+   * Get image URL from image ID
+   */
+  protected getImageUrl(imageId?: string): string | null {
+    if (!imageId) return null;
+    return `${UriCostants.filesUrl}/download?id=${imageId}`;
+  }
+
+  /**
+   * Check if material has an image
+   */
+  protected hasImage(item: MaterialDto): boolean {
+    return !!item.image;
+  }
+
+  /**
+   * Get the image ID from material
+   */
+  protected getImageId(item: MaterialDto): string | null {
+    return item.image || null;
+  }
 
   /**
    * Get CSS classes for material type badge

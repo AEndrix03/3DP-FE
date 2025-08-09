@@ -30,10 +30,10 @@
       <!-- Material Image -->
       <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
         <img
-          *ngIf="item.image && item.image !== ''; else defaultImage"
-          [src]="item.image"
+          *ngIf="hasImage(item); else defaultImage"
+          [src]="getImageUrl(getImageId(item)!)"
           [alt]="item.name"
-          class="w-full h-full object-cover"
+          class="w-full h-full object-contain"
           (error)="onImageError($event)"
         />
         <ng-template #defaultImage>

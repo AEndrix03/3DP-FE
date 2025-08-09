@@ -1,39 +1,107 @@
-<div class="pb-4 px-2 border-b border-gray-200 dark:border-gray-700">
-  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-6">
+<div class="pb-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
     <div
       *ngFor="let item of items"
-      class="bg-gray-900 dark:bg-gray-800 rounded-2xl shadow-lg p-4 flex flex-col justify-between transition transform hover:scale-[1.02] hover:ring hover:ring-blue-500/30"
+      class="printer-card relative border rounded-lg overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-md bg-white border-gray-200 group"
     >
-      <div class="relative">
-        <img
-          [src]="item.imageUrl || 'https://placehold.co/240x180?text=3D+Printer'"
-          alt="Printer image"
-          class="w-[240px] h-[240px] object-cover rounded-lg"
+      <!-- Action Buttons (visible on hover) -->
+      <div
+        class="absolute top-2 left-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <p-button
+          icon="pi pi-info-circle"
+          size="small"
+          severity="secondary"
+          [rounded]="true"
+          (onClick)="viewDetail.emit(item.id); $event.stopPropagation()"
+          class="w-7 h-7"
+          title="View Printer Details"
+        />
+        <p-button
+          icon="pi pi-trash"
+          size="small"
+          severity="danger"
+          [rounded]="true"
+          (onClick)="delete.emit(item.id); $event.stopPropagation()"
+          class="w-7 h-7"
+          title="Delete Printer"
         />
       </div>
 
-      <div class="mt-4">
-        <div class="text-white text-base font-semibold">{{ item.name }}</div>
-        <div class="text-gray-400 text-sm mb-4">ID: {{ item.id }}</div>
+      <!-- Status Indicator (top right) -->
+      <div class="absolute top-2 right-2 z-10" *ngIf="item.status">
+        <span
+          class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium"
+          [class]="getPrinterStatusBadgeClass(item.status.code)"
+          [title]="'Status: ' + item.status.description"
+        >
+          <i [class]="getPrinterStatusIcon(item.status.code)"></i>
+        </span>
+      </div>
 
-        <div class="flex justify-end gap-2">
-          <p-button
-            icon="pi pi-trash"
-            severity="secondary"
-            [outlined]="true"
-            [rounded]="true"
-            (onClick)="delete.emit(item.id)"
-          ></p-button>
+      <!-- Printer Image -->
+      <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
+        <img
+          *ngIf="item.imageUrl && item.imageUrl !== ''; else defaultImage"
+          [src]="item.imageUrl"
+          [alt]="item.name"
+          class="w-full h-full object-cover"
+          (error)="onImageError($event)"
+        />
+        <ng-template #defaultImage>
+          <div class="flex flex-col items-center justify-center text-gray-400">
+            <i class="pi pi-desktop text-3xl mb-1"></i>
+            <span class="text-xs">No Image</span>
+          </div>
+        </ng-template>
+      </div>
 
-          <p-button
-            icon="pi pi-info-circle"
-            severity="secondary"
-            [outlined]="true"
-            [rounded]="true"
-            (onClick)="viewDetail.emit(item.id)"
-          ></p-button>
+      <!-- Printer Info -->
+      <div class="p-3">
+        <div class="flex items-start justify-between mb-2">
+          <h4 class="font-medium text-gray-900 text-sm leading-tight">{{ item.name }}</h4>
+        </div>
+
+        <!-- Driver ID -->
+        <div class="flex items-center mb-2 text-xs text-gray-600">
+          <i class="pi pi-cog mr-1"></i>
+          <span>Driver: {{ item.driverId }}</span>
+        </div>
+
+        <!-- Status Description -->
+        <div class="flex items-center mb-2 text-xs" *ngIf="item.status">
+          <i class="pi pi-info-circle mr-1" [class]="getPrinterStatusTextClass(item.status.code)"></i>
+          <span [class]="getPrinterStatusTextClass(item.status.code)">{{ item.status.description }}</span>
+        </div>
+
+        <!-- Last Seen -->
+        <div class="flex items-center justify-between text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
+          <span>Last seen:</span>
+          <span class="font-medium">{{ formatLastSeen(item.lastSeen) }}</span>
+        </div>
+
+        <!-- Status Summary -->
+        <div class="mt-2 pt-2 border-t border-gray-100">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-gray-500">Status:</span>
+            <span
+              class="font-medium"
+              [class]="getPrinterStatusTextClass(item.status?.code || 'UNKNOWN')"
+            >
+              {{ item.status?.code || 'Unknown' }}
+            </span>
+          </div>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Empty State -->
+  <div
+    *ngIf="!items || items.length === 0"
+    class="text-center py-12 text-gray-500"
+  >
+    <i class="pi pi-desktop text-4xl mb-4 text-gray-300"></i>
+    <p class="text-lg font-medium mb-2">No printers found</p>
+    <p class="text-sm">Add your first 3D printer to get started</p>
   </div>
 </div>

@@ -1,0 +1,23 @@
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <p-iconfield>
+    <p-inputicon styleClass="pi pi-search" />
+    <input
+      type="text"
+      pInputText
+      [formControl]="nameFc()"
+      placeholder="Search by name"
+      class="w-full py-2 rounded-md border border-surface-400"
+    />
+  </p-iconfield>
+
+  <p-iconfield>
+    <p-inputicon styleClass="pi pi-id-card" />
+    <input
+      type="text"
+      pInputText
+      [formControl]="idFc()"
+      placeholder="Search by ID"
+      class="w-full py-2 rounded-md border border-surface-400"
+    />
+  </p-iconfield>
+</div>

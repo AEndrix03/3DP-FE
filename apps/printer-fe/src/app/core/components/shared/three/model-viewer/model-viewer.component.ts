@@ -1,18 +1,20 @@
-// model-viewer.component.ts
+// model-viewer.component.ts - IMPROVED VERSION
 import {
+  AfterViewInit,
+  ChangeDetectorRef,
   Component,
-  ElementRef,
-  Input,
-  OnDestroy,
-  OnInit,
-  ViewChild,
-  HostListener,
-  Output,
-  EventEmitter,
-  signal,
   computed,
   effect,
+  ElementRef,
+  EventEmitter,
+  HostListener,
+  Input,
   input,
+  OnDestroy,
+  OnInit,
+  Output,
+  signal,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProgressBarModule } from 'primeng/progressbar';
@@ -46,6 +48,7 @@ export interface ModelViewerOptions {
         display: block;
         width: 100%;
         height: 100%;
+        contain: layout style paint;
       }
 
       .cursor-grab:active {
@@ -54,13 +57,14 @@ export interface ModelViewerOptions {
     `,
   ],
 })
-export class ModelViewerComponent implements OnInit, OnDestroy {
+export class ModelViewerComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('container', { static: true }) container!: ElementRef<HTMLElement>;
 
   // Convert @Input to InputSignal for reactivity
   modelUrl = input<string | null>(null);
   modelFile = input<Blob | null>(null);
   @Input() options: ModelViewerOptions = {};
+  @Input() showButtons: boolean = true;
 
   @Output() modelLoaded = new EventEmitter<ModelLoadResult>();
   @Output() modelError = new EventEmitter<string>();
@@ -85,9 +89,17 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
   private renderer: THREE.WebGLRenderer | null = null;
   private controls: OrbitControls | null = null;
   private stopAnimation: (() => void) | null = null;
-  private currentModel: THREE.Group | null = null;
+  protected currentModel: THREE.Group | null = null;
 
-  constructor(private readonly modelService: ThreeJsModelService) {
+  // ResizeObserver per gestire il resize del container
+  private resizeObserver: ResizeObserver | null = null;
+  protected isSceneInitialized = false;
+  private pendingResize = false;
+
+  constructor(
+    private readonly modelService: ThreeJsModelService,
+    private readonly cdr: ChangeDetectorRef
+  ) {
     // Subscribe to loading progress
     effect(() => {
       this.modelService.loading$.subscribe((progress) => {
@@ -121,25 +133,100 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.initializeScene();
+    // Non inizializzare la scena qui, aspettiamo ngAfterViewInit
+  }
+
+  ngAfterViewInit(): void {
+    // Aspettiamo che il DOM sia completamente renderizzato
+    setTimeout(() => {
+      this.initializeScene();
+      this.setupResizeObserver();
+    }, 0);
   }
 
   ngOnDestroy(): void {
     this.cleanup();
   }
 
+  private setupResizeObserver(): void {
+    if (!this.container?.nativeElement) return;
+
+    this.resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === this.container.nativeElement) {
+          this.handleContainerResize();
+        }
+      }
+    });
+
+    this.resizeObserver.observe(this.container.nativeElement);
+  }
+
+  private handleContainerResize(): void {
+    if (!this.isSceneInitialized) return;
+
+    // Debounce il resize per evitare troppe chiamate
+    if (this.pendingResize) return;
+
+    this.pendingResize = true;
+    requestAnimationFrame(() => {
+      if (this.camera && this.renderer && this.container) {
+        this.updateRendererSize();
+      }
+      this.pendingResize = false;
+    });
+  }
+
+  private updateRendererSize(): void {
+    if (!this.camera || !this.renderer || !this.container) return;
+
+    const element = this.container.nativeElement;
+    const rect = element.getBoundingClientRect();
+
+    // Verifica che il container abbia dimensioni valide
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const width = rect.width;
+    const height = rect.height;
+
+    // Aggiorna aspect ratio della camera
+    this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+
+    // Aggiorna dimensioni del renderer
+    this.renderer.setSize(width, height);
+
+    console.log(`Renderer resized to: ${width}x${height}`);
+  }
+
   @HostListener('window:resize')
   onWindowResize(): void {
-    if (this.camera && this.renderer && this.container) {
-      this.modelService.handleResize(
-        this.camera,
-        this.renderer,
-        this.container
-      );
+    // Fallback per browser che non supportano ResizeObserver
+    if (!this.resizeObserver) {
+      this.handleContainerResize();
     }
   }
 
   private initializeScene(): void {
+    if (!this.container?.nativeElement) {
+      console.error('Container not available for scene initialization');
+      return;
+    }
+
+    const element = this.container.nativeElement;
+    const rect = element.getBoundingClientRect();
+
+    // Verifica che il container abbia dimensioni valide
+    if (rect.width <= 0 || rect.height <= 0) {
+      console.warn('Container has invalid dimensions, retrying...');
+      setTimeout(() => this.initializeScene(), 100);
+      return;
+    }
+
+    console.log(
+      `Initializing scene with container size: ${rect.width}x${rect.height}`
+    );
+
     const sceneSetup = this.modelService.createScene(this.container, {
       enableControls: this.options.enableControls ?? true,
       backgroundColor: this.options.backgroundColor ?? 0xf0f0f0,
@@ -156,6 +243,9 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
       this.controls.autoRotate = this.autoRotate();
     }
 
+    // Forza un resize iniziale
+    this.updateRendererSize();
+
     // Start animation loop
     this.stopAnimation = this.modelService.startAnimationLoop(
       this.renderer,
@@ -163,10 +253,25 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
       this.camera,
       this.controls || undefined
     );
+
+    this.isSceneInitialized = true;
+
+    // Se c'è già un modello in attesa, caricalo
+    if ((this.modelUrl() || this.modelFile()) && !this.currentModel) {
+      this.loadModel();
+    }
   }
 
   private async loadModel(): Promise<void> {
     console.log('ModelViewerComponent loadModel() called.');
+
+    // Aspetta che la scena sia inizializzata
+    if (!this.isSceneInitialized) {
+      console.log('  Scene not initialized yet, waiting...');
+      setTimeout(() => this.loadModel(), 100);
+      return;
+    }
+
     if (!this.modelUrl() && !this.modelFile()) {
       console.log('  No model URL or file provided. Returning.');
       return;
@@ -221,6 +326,11 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
         if (this.wireframe()) {
           this.toggleModelWireframe(true);
         }
+
+        // Forza un aggiornamento del renderer dopo il caricamento
+        requestAnimationFrame(() => {
+          this.updateRendererSize();
+        });
       }
 
       this.modelInfo.set(result);
@@ -257,6 +367,11 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
   }
 
   private cleanup(): void {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+
     if (this.stopAnimation) {
       this.stopAnimation();
     }
@@ -275,6 +390,8 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
     if (this.controls) {
       this.controls.dispose();
     }
+
+    this.isSceneInitialized = false;
   }
 
   // Public methods
@@ -306,7 +423,28 @@ export class ModelViewerComponent implements OnInit, OnDestroy {
   }
 
   retry(): void {
+    this.error.set(null);
     this.loadModel();
+  }
+
+  // Metodo pubblico per forzare il resize (utile per debugging)
+  public forceResize(): void {
+    this.handleContainerResize();
+  }
+
+  /**
+   * Get container dimensions safely (for debugging)
+   */
+  protected getContainerDimensions(): { width: number; height: number } {
+    if (!this.container?.nativeElement) {
+      return { width: 0, height: 0 };
+    }
+
+    const rect = this.container.nativeElement.getBoundingClientRect();
+    return {
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+    };
   }
 
   // Utility methods

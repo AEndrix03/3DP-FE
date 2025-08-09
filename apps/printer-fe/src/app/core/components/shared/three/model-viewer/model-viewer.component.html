@@ -1,21 +1,28 @@
 <div
-  class="relative w-full h-full bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden"
+  class="relative w-full h-full bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex"
+  [attr.data-loading]="loading()"
+  [attr.data-error]="!!error()"
 >
   <!-- 3D Canvas Container -->
   <div
     #container
-    class="w-full h-full cursor-grab active:cursor-grabbing"
+    class="w-full h-full cursor-grab active:cursor-grabbing flex-1"
     [class.cursor-not-allowed]="loading()"
+    [class.opacity-50]="loading()"
+    style="min-height: 0; min-width: 0;"
   ></div>
 
   <!-- Loading Overlay -->
   <div
     *ngIf="loading()"
     class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10"
+    [@fadeInOut]
   >
-    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl max-w-xs w-full mx-4">
       <div class="text-center mb-4">
-        <i class="pi pi-spin pi-spinner text-2xl text-blue-500"></i>
+        <div class="relative">
+          <i class="pi pi-spin pi-spinner text-2xl text-blue-500"></i>
+        </div>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
           Loading 3D Model...
         </p>
@@ -23,9 +30,9 @@
       <p-progressBar
         [value]="loadingProgress()?.percentage || 0"
         [showValue]="true"
-        styleClass="w-64"
+        styleClass="w-full"
       />
-      <p class="text-xs text-gray-500 mt-2 text-center">
+      <p class="text-xs text-gray-500 mt-2 text-center" *ngIf="loadingProgress()">
         {{ formatBytes(loadingProgress()?.loaded || 0) }} /
         {{ formatBytes(loadingProgress()?.total || 0) }}
       </p>
@@ -35,29 +42,45 @@
   <!-- Error State -->
   <div
     *ngIf="error()"
-    class="absolute inset-0 flex items-center justify-center z-10"
+    class="absolute inset-0 flex items-center justify-center z-10 p-4"
+    [@fadeInOut]
   >
-    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl text-center">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl text-center max-w-md w-full">
       <i class="pi pi-exclamation-triangle text-3xl text-red-500 mb-4"></i>
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
         Failed to load model
       </h3>
-      <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+      <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 break-words">
         {{ error() }}
       </p>
-      <p-button
-        label="Retry"
-        icon="pi pi-refresh"
-        size="small"
-        severity="secondary"
-        (onClick)="retry()"
-      />
+      <div class="flex gap-2 justify-center">
+        <p-button
+          label="Retry"
+          icon="pi pi-refresh"
+          size="small"
+          severity="secondary"
+          (onClick)="retry()"
+        />
+        <p-button
+          label="Force Resize"
+          icon="pi pi-arrows-alt"
+          size="small"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="forceResize()"
+          pTooltip="Force container resize (debug)"
+        />
+      </div>
     </div>
   </div>
 
   <!-- Controls -->
-  <div class="absolute top-4 left-4 flex flex-col gap-2 z-20">
+  <div
+    class="absolute top-4 left-4 flex flex-col gap-2 z-20"
+    [class.pointer-events-none]="loading() || !!error()"
+  >
     <p-button
+      *ngIf="showButtons"
       icon="pi pi-refresh"
       [text]="true"
       [rounded]="true"
@@ -67,8 +90,10 @@
       tooltipPosition="right"
       (onClick)="resetView()"
       [disabled]="loading() || !!error()"
+      class="shadow-md hover:shadow-lg transition-shadow"
     />
     <p-button
+      *ngIf="showButtons"
       [icon]="wireframe() ? 'pi pi-eye' : 'pi pi-eye-slash'"
       [text]="true"
       [rounded]="true"
@@ -78,8 +103,10 @@
       tooltipPosition="right"
       (onClick)="toggleWireframe()"
       [disabled]="loading() || !!error()"
+      class="shadow-md hover:shadow-lg transition-shadow"
     />
     <p-button
+      *ngIf="showButtons"
       [icon]="autoRotate() ? 'pi pi-pause' : 'pi pi-play'"
       [text]="true"
       [rounded]="true"
@@ -89,12 +116,17 @@
       tooltipPosition="right"
       (onClick)="toggleAutoRotate()"
       [disabled]="loading() || !!error()"
+      class="shadow-md hover:shadow-lg transition-shadow"
     />
   </div>
 
   <!-- Fullscreen Toggle -->
-  <div class="absolute top-4 right-4 z-20">
+  <div
+    class="absolute top-4 right-4 z-20"
+    [class.pointer-events-none]="loading() || !!error()"
+  >
     <p-button
+      *ngIf="showButtons"
       [icon]="
         isFullscreen() ? 'pi pi-window-minimize' : 'pi pi-window-maximize'
       "
@@ -106,6 +138,19 @@
       tooltipPosition="left"
       (onClick)="toggleFullscreen()"
       [disabled]="loading() || !!error()"
+      class="shadow-md hover:shadow-lg transition-shadow"
     />
+  </div>
+
+  <!-- Debug Info (only in development) -->
+  <div
+    *ngIf="false"
+    class="absolute bottom-4 left-4 z-20 bg-black bg-opacity-75 text-white text-xs p-2 rounded font-mono"
+  >
+    <div>Container: {{ getContainerDimensions().width }}x{{ getContainerDimensions().height }}</div>
+    <div>Loading: {{ loading() }}</div>
+    <div>Error: {{ !!error() }}</div>
+    <div>Model: {{ !!currentModel }}</div>
+    <div>Scene Initialized: {{ isSceneInitialized }}</div>
   </div>
 </div>

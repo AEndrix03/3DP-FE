@@ -4,6 +4,7 @@ import { LayoutPrivateComponent } from '../../layout/private/layout-private.comp
 import { ProfileComponent } from './profile/profile.component';
 import { PrintersComponent } from './printers/printers.component';
 import { SlicingResultComponent } from './slicing-result/slicing-result.component';
+import { MaterialsComponent } from './materials/materials.component';
 
 export const privateRoutes: Routes = [
   {
@@ -29,6 +30,10 @@ export const privateRoutes: Routes = [
       {
         path: 'slicing-result',
         component: SlicingResultComponent,
+      },
+      {
+        path: 'materials',
+        component: MaterialsComponent,
       },
     ],
   },

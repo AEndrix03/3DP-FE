@@ -1,35 +1,152 @@
-<div class="border-gray-200 dark:border-gray-700">
-  <div class="flex flex-row flex-wrap gap-6">
+<div class="pb-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
     <div
-      *ngFor="let model of models"
-      class="bg-gray-900 dark:bg-gray-800 rounded-2xl shadow-lg p-4 flex flex-col transition transform hover:scale-[1.02] hover:ring hover:ring-blue-500/30 cursor-pointer w-56"
+      *ngFor="let model of models; trackBy: trackByModelId"
+      class="model-card relative border rounded-lg overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-lg bg-white border-gray-200 group focus:ring-2 focus:ring-blue-500 focus:outline-none"
       tabindex="0"
       (click)="selectedModel.emit(model.id)"
       (keydown.enter)="selectedModel.emit(model.id)"
-      (keydown.space)="selectedModel.emit(model.id)"
+      (keydown.space)="selectedModel.emit(model.id); $event.preventDefault()"
     >
-      <div>
-        <printer-model-viewer
-          [modelFile]="modelsGlb()[model.resourceId]"
-          [options]="{
-            enableControls: true,
-            antialias: true,
-            shadows: false,
-            showStats: false,
-            autoRotate: true,
-            backgroundColor: '#ffffff'
-          }"
-          style="width: 100%; height: 175px"
-          (click)="$event.stopPropagation()"
-        ></printer-model-viewer>
+      <!-- Selection Indicator -->
+      <div class="absolute top-2 right-2 z-10">
+        <div
+          class="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center border border-gray-300 shadow-sm group-hover:bg-blue-500 group-hover:border-blue-500 transition-all duration-200">
+          <i class="pi pi-play text-sm text-gray-600 group-hover:text-white"></i>
+        </div>
       </div>
 
-      <div class="mt-4">
-        <div class="text-white text-base font-semibold break-all">
-          {{ model.name }}
+      <!-- Model Type Badge -->
+      <div class="absolute top-2 left-2 z-10">
+        <span
+          class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-500 text-white shadow-sm">
+          <i class="pi pi-box mr-1"></i>
+          3D Model
+        </span>
+      </div>
+
+      <!-- 3D Model Viewer - Layout migliorato con dimensioni fisse -->
+      <div class="relative w-full" style="aspect-ratio: 1; min-height: 200px;">
+        <div
+          class="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center overflow-hidden">
+          <printer-model-viewer
+            *ngIf="modelsGlb()[model.resourceId] && hasPreview(model); else noModelViewer"
+            [modelFile]="modelsGlb()[model.resourceId]"
+            [showButtons]="false"
+            [options]="{
+              enableControls: true,
+              antialias: true,
+              shadows: true,
+              showStats: false,
+              autoRotate: true,
+              backgroundColor: '#ffffff'
+            }"
+            class="w-full h-full block"
+            (click)="$event.stopPropagation()"
+            (modelLoaded)="onModelLoaded(model.id, $event)"
+            (modelError)="onModelError(model.id, $event)"
+          ></printer-model-viewer>
+
+          <ng-template #noModelViewer>
+            <div class="flex flex-col items-center justify-center text-gray-400 w-full h-full">
+              <ng-container *ngIf="isModelLoading(model.id); else notLoadingTemplate">
+                <i class="pi pi-spin pi-spinner text-2xl mb-2 text-blue-500"></i>
+                <span class="text-sm font-medium text-blue-600">Loading...</span>
+              </ng-container>
+
+              <ng-template #notLoadingTemplate>
+                <ng-container *ngIf="hasModelError(model.id); else noModelTemplate">
+                  <i class="pi pi-exclamation-triangle text-2xl mb-2 text-red-500"></i>
+                  <span class="text-sm font-medium text-red-600">Load Error</span>
+                </ng-container>
+
+                <ng-template #noModelTemplate>
+                  <i class="pi pi-box text-4xl mb-2"></i>
+                  <span class="text-sm font-medium">No Preview</span>
+                </ng-template>
+              </ng-template>
+            </div>
+          </ng-template>
         </div>
-        <div class="text-gray-400 text-sm break-all">ID: {{ model.id }}</div>
+      </div>
+
+      <!-- Model Info -->
+      <div class="p-4">
+        <!-- Model Name -->
+        <div class="mb-3">
+          <h4 class="font-semibold text-gray-900 text-base leading-tight truncate" [title]="model.name">
+            {{ formatModelName(model.name) }}
+          </h4>
+        </div>
+
+        <!-- Description (if available) -->
+        <div class="mb-3" *ngIf="model.description">
+          <p class="text-sm text-gray-600 line-clamp-2" [title]="model.description">
+            {{ model.description }}
+          </p>
+        </div>
+
+        <!-- Resource ID - Più leggibile -->
+        <div class="flex items-center mb-3 p-2 bg-gray-50 rounded-md">
+          <i class="pi pi-tag mr-2 text-gray-400 flex-shrink-0"></i>
+          <span class="font-mono text-sm text-gray-700 flex-1 min-w-0 truncate" [title]="model.resourceId">
+            {{ formatResourceId(model.resourceId) }}
+          </span>
+          <button
+            class="ml-2 text-xs text-blue-600 hover:text-blue-800 transition-colors flex-shrink-0 p-1 rounded hover:bg-blue-50"
+            (click)="copyToClipboard(model.resourceId); $event.stopPropagation()"
+            title="Copy full ID"
+          >
+            <i class="pi pi-copy"></i>
+          </button>
+        </div>
+
+        <!-- Dates Information -->
+        <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
+          <div class="flex items-center flex-1 min-w-0" title="Created">
+            <i class="pi pi-calendar mr-1 flex-shrink-0"></i>
+            <span class="truncate">{{ formatDate(model.createdAt) }}</span>
+          </div>
+          <div class="flex items-center flex-shrink-0 ml-2" *ngIf="isUpdated(model)" title="Last Updated">
+            <i class="pi pi-clock mr-1 text-orange-500"></i>
+            <span class="text-orange-600 font-medium">Updated</span>
+          </div>
+        </div>
+
+        <!-- Model Status -->
+        <div class="flex items-center justify-between text-xs text-gray-500 mb-3" *ngIf="showDebugInfo">
+          <span>Preview: {{ hasPreview(model) ? 'Available' : 'None' }}</span>
+          <span *ngIf="isRecent(model)" class="text-green-600 font-medium">New</span>
+        </div>
+
+        <!-- Select Action Hint -->
+        <div class="pt-3 border-t border-gray-100">
+          <div
+            class="flex items-center justify-center text-sm text-gray-500 group-hover:text-blue-600 transition-colors duration-200">
+            <i class="pi pi-hand-pointer mr-2"></i>
+            <span class="font-medium">Click to select</span>
+          </div>
+        </div>
       </div>
     </div>
+  </div>
+
+  <!-- Loading State for entire grid -->
+  <div
+    *ngIf="isLoadingAny()"
+    class="fixed bottom-4 right-4 z-50 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center"
+  >
+    <i class="pi pi-spin pi-spinner mr-2"></i>
+    <span class="text-sm">Loading models...</span>
+  </div>
+
+  <!-- Empty State -->
+  <div
+    *ngIf="!models || models.length === 0"
+    class="text-center py-12 text-gray-500"
+  >
+    <i class="pi pi-box text-4xl mb-4 text-gray-300"></i>
+    <p class="text-lg font-medium mb-2">No 3D models found</p>
+    <p class="text-sm">Upload your first 3D model to get started</p>
   </div>
 </div>

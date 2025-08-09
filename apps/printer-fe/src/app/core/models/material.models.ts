@@ -28,3 +28,8 @@ export type MaterialUpdateDto = Partial<
 > & {
   id: string;
 };
+
+export interface MaterialFilterDto {
+  name?: string;
+  id?: string;
+}

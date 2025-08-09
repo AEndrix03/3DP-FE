@@ -1,0 +1,130 @@
+<div class="pb-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+    <div
+      *ngFor="let item of items"
+      class="material-card relative border rounded-lg overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-md bg-white border-gray-200 group"
+    >
+      <!-- Action Buttons (visible on hover) -->
+      <div
+        class="absolute top-2 left-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <p-button
+          icon="pi pi-pencil"
+          size="small"
+          severity="secondary"
+          [rounded]="true"
+          (onClick)="viewDetail.emit(item); $event.stopPropagation()"
+          class="w-7 h-7"
+          title="Edit Material"
+        />
+        <p-button
+          icon="pi pi-trash"
+          size="small"
+          severity="danger"
+          [rounded]="true"
+          (onClick)="delete.emit(item.id); $event.stopPropagation()"
+          class="w-7 h-7"
+          title="Delete Material"
+        />
+      </div>
+
+      <!-- Material Image -->
+      <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
+        <img
+          *ngIf="item.image && item.image !== ''; else defaultImage"
+          [src]="item.image"
+          [alt]="item.name"
+          class="w-full h-full object-cover"
+          (error)="onImageError($event)"
+        />
+        <ng-template #defaultImage>
+          <div class="flex flex-col items-center justify-center text-gray-400">
+            <i class="pi pi-image text-3xl mb-1"></i>
+            <span class="text-xs">No Image</span>
+          </div>
+        </ng-template>
+      </div>
+
+      <!-- Material Info -->
+      <div class="p-3">
+        <div class="flex items-start justify-between mb-2">
+          <h4 class="font-medium text-gray-900 text-sm leading-tight">{{ item.name }}</h4>
+        </div>
+
+        <!-- Material Type Badge -->
+        <div class="flex items-center gap-2 mb-2">
+          <span
+            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+            [class]="getMaterialTypeBadgeClass(item.type)"
+          >
+            {{ item.type }}
+          </span>
+        </div>
+
+        <!-- Brand -->
+        <div class="flex items-center mb-2 text-xs text-gray-600">
+          <i class="pi pi-building mr-1"></i>
+          <span>{{ item.brand }}</span>
+        </div>
+
+        <!-- Temperature Info -->
+        <div class="flex items-center justify-between text-xs text-gray-500">
+          <div class="flex items-center" title="Extruder Temperature Range">
+            <i class="pi pi-sun mr-1"></i>
+            <span>{{ item.recommendedExtruderTempMinC }}°-{{ item.recommendedExtruderTempMaxC }}°C</span>
+          </div>
+          <div class="flex items-center" *ngIf="item.recommendedBedTempC > 0" title="Bed Temperature">
+            <i class="pi pi-tablet mr-1"></i>
+            <span>{{ item.recommendedBedTempC }}°C</span>
+          </div>
+        </div>
+
+        <!-- Material Properties -->
+        <div class="flex items-center gap-1 mt-2">
+          <span
+            *ngIf="item.requiresHeatedBed === 'true'"
+            class="inline-flex items-center justify-center w-5 h-5 bg-orange-100 text-orange-600 rounded-full text-xs"
+            title="Requires Heated Bed"
+          >
+            <i class="pi pi-sun text-xs"></i>
+          </span>
+          <span
+            *ngIf="item.supportsSoluble === 'true'"
+            class="inline-flex items-center justify-center w-5 h-5 bg-blue-100 text-blue-600 rounded-full text-xs"
+            title="Soluble Support"
+          >
+            <i class="pi pi-droplet text-xs"></i>
+          </span>
+          <span
+            *ngIf="item.requiresChamberHeating === 'true'"
+            class="inline-flex items-center justify-center w-5 h-5 bg-red-100 text-red-600 rounded-full text-xs"
+            title="Requires Chamber Heating"
+          >
+            <i class="pi pi-home text-xs"></i>
+          </span>
+        </div>
+
+        <!-- Additional Info (Cost and Diameter) -->
+        <div class="flex items-center justify-between text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
+          <div class="flex items-center" title="Cost per Kg">
+            <i class="pi pi-euro mr-1"></i>
+            <span>{{ item.costPerKg }}/kg</span>
+          </div>
+          <div class="flex items-center" title="Diameter">
+            <i class="pi pi-circle mr-1"></i>
+            <span>{{ item.diameterMm }}mm</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div
+    *ngIf="!items || items.length === 0"
+    class="text-center py-12 text-gray-500"
+  >
+    <i class="pi pi-inbox text-4xl mb-4 text-gray-300"></i>
+    <p class="text-lg font-medium mb-2">No materials found</p>
+    <p class="text-sm">Create your first material to get started</p>
+  </div>
+</div>

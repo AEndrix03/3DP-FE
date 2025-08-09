@@ -46,6 +46,11 @@ export class PrivateSidebarComponent {
       route: '/printers',
     },
     {
+      icon: 'pi pi-th-large',
+      label: 'Materials',
+      route: '/materials',
+    },
+    {
       icon: 'pi pi-cog',
       label: 'Settings',
       route: '/settings',

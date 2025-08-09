@@ -1,0 +1,21 @@
+<div class="flex flex-col gap-4">
+  <printer-page-title title="Materials">
+    <p-button
+      printerPageActions
+      label="Create New Material"
+      icon="pi pi-plus"
+      severity="secondary"
+      [raised]="true"
+      (click)="createMaterial()"
+      [disabled]="isLoading"
+    />
+  </printer-page-title>
+
+  <printer-materials-filter />
+
+  <printer-materials-grid
+    [items]="items"
+    (viewDetail)="editMaterial($event)"
+    (delete)="deleteMaterial($event)"
+  />
+</div>

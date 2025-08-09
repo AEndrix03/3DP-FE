@@ -2,6 +2,7 @@ export interface PrinterDto {
   id: string;
   name: string;
   driverId: string;
+  status?: PrinterStatusDto;
   lastSeen: Date;
   imageUrl?: string;
 }

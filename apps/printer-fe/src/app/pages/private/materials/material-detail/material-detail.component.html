@@ -1,0 +1,348 @@
+<div class="w-full">
+  <form [formGroup]="materialForm" class="space-y-6">
+
+    <p-card class="shadow-sm">
+      <ng-template pTemplate="header">
+        <div class="p-4 border-b border-gray-200">
+          <div class="flex items-center gap-3">
+            <i
+              class="text-2xl"
+              [class]="'pi ' + getMaterialTypeIcon(materialForm.get('type')?.value || 'OTHER')"
+              [style.color]="materialForm.get('type')?.value ? '#6366f1' : '#9ca3af'"
+            ></i>
+            <h2 class="text-xl font-semibold">
+              {{ isNew() ? 'New Material' : 'Edit Material' }}
+            </h2>
+          </div>
+        </div>
+      </ng-template>
+
+      <div class="p-6 space-y-6">
+
+        <!-- General Information Section -->
+        <div>
+          <h3 class="text-lg font-medium text-gray-800 mb-4">General Information</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            <div class="space-y-2">
+              <label for="name" class="block text-sm font-medium text-gray-700">Name *</label>
+              <input
+                id="name"
+                type="text"
+                pInputText
+                formControlName="name"
+                placeholder="Enter material name"
+                class="w-full"
+                [class.ng-invalid]="getFieldError('name')"
+              />
+              <small class="text-red-500" *ngIf="getFieldError('name')">
+                {{ getFieldError('name') }}
+              </small>
+            </div>
+
+            <div class="space-y-2">
+              <label for="type" class="block text-sm font-medium text-gray-700">Material Type *</label>
+              <p-dropdown
+                id="type"
+                formControlName="type"
+                [options]="materialTypes"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select material type"
+                class="w-full"
+                [class.ng-invalid]="getFieldError('type')"
+              />
+              <small class="text-red-500" *ngIf="getFieldError('type')">
+                {{ getFieldError('type') }}
+              </small>
+            </div>
+
+            <div class="space-y-2">
+              <label for="brand" class="block text-sm font-medium text-gray-700">Brand *</label>
+              <input
+                id="brand"
+                type="text"
+                pInputText
+                formControlName="brand"
+                placeholder="Enter brand name"
+                class="w-full"
+                [class.ng-invalid]="getFieldError('brand')"
+              />
+              <small class="text-red-500" *ngIf="getFieldError('brand')">
+                {{ getFieldError('brand') }}
+              </small>
+            </div>
+
+          </div>
+        </div>
+
+        <p-divider />
+
+        <!-- Physical Properties Section -->
+        <div>
+          <h3 class="text-lg font-medium text-gray-800 mb-4">Physical Properties</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            <div class="space-y-2">
+              <label for="densityGCm3" class="block text-sm font-medium text-gray-700">Density (g/cm³) *</label>
+              <p-inputNumber
+                id="densityGCm3"
+                formControlName="densityGCm3"
+                mode="decimal"
+                [minFractionDigits]="2"
+                [maxFractionDigits]="3"
+                [min]="0.1"
+                [max]="20"
+                [step]="0.01"
+                suffix=" g/cm³"
+                class="w-full"
+                [class.ng-invalid]="getFieldError('densityGCm3')"
+              />
+              <small class="text-red-500" *ngIf="getFieldError('densityGCm3')">
+                {{ getFieldError('densityGCm3') }}
+              </small>
+            </div>
+
+            <div class="space-y-2">
+              <label for="diameterMm" class="block text-sm font-medium text-gray-700">Diameter *</label>
+              <p-dropdown
+                id="diameterMm"
+                formControlName="diameterMm"
+                [options]="diameterOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select diameter"
+                class="w-full"
+                [class.ng-invalid]="getFieldError('diameterMm')"
+              />
+              <small class="text-red-500" *ngIf="getFieldError('diameterMm')">
+                {{ getFieldError('diameterMm') }}
+              </small>
+            </div>
+
+            <div class="space-y-2">
+              <label for="costPerKg" class="block text-sm font-medium text-gray-700">Cost per Kg *</label>
+              <p-inputNumber
+                id="costPerKg"
+                formControlName="costPerKg"
+                mode="decimal"
+                [minFractionDigits]="2"
+                [maxFractionDigits]="2"
+                [min]="0"
+                [step]="1"
+                prefix="€ "
+                class="w-full"
+                [class.ng-invalid]="getFieldError('costPerKg')"
+              />
+              <small class="text-red-500" *ngIf="getFieldError('costPerKg')">
+                {{ getFieldError('costPerKg') }}
+              </small>
+            </div>
+
+          </div>
+        </div>
+
+        <p-divider />
+
+        <!-- Temperature Settings Section -->
+        <div>
+          <h3 class="text-lg font-medium text-gray-800 mb-4">Temperature Settings</h3>
+
+          <!-- Temperature Range Alert -->
+          <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4" *ngIf="hasFormError('temperatureRange')">
+            <div class="flex items-center">
+              <i class="pi pi-exclamation-triangle text-red-600 mr-2"></i>
+              <span class="text-red-800 text-sm">Maximum temperature must be higher than minimum temperature</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            <div class="space-y-2">
+              <label for="recommendedExtruderTempMinC" class="block text-sm font-medium text-gray-700">Min Extruder Temp
+                (°C) *</label>
+              <p-inputNumber
+                id="recommendedExtruderTempMinC"
+                formControlName="recommendedExtruderTempMinC"
+                [min]="150"
+                [max]="350"
+                [step]="5"
+                suffix="°C"
+                class="w-full"
+                [class.ng-invalid]="getFieldError('recommendedExtruderTempMinC') || hasFormError('temperatureRange')"
+              />
+              <small class="text-red-500" *ngIf="getFieldError('recommendedExtruderTempMinC')">
+                {{ getFieldError('recommendedExtruderTempMinC') }}
+              </small>
+            </div>
+
+            <div class="space-y-2">
+              <label for="recommendedExtruderTempMaxC" class="block text-sm font-medium text-gray-700">Max Extruder Temp
+                (°C) *</label>
+              <p-inputNumber
+                id="recommendedExtruderTempMaxC"
+                formControlName="recommendedExtruderTempMaxC"
+                [min]="150"
+                [max]="350"
+                [step]="5"
+                suffix="°C"
+                class="w-full"
+                [class.ng-invalid]="getFieldError('recommendedExtruderTempMaxC') || hasFormError('temperatureRange')"
+              />
+              <small class="text-red-500" *ngIf="getFieldError('recommendedExtruderTempMaxC')">
+                {{ getFieldError('recommendedExtruderTempMaxC') }}
+              </small>
+            </div>
+
+            <div class="space-y-2">
+              <label for="recommendedBedTempC" class="block text-sm font-medium text-gray-700">Bed Temperature (°C)
+                *</label>
+              <p-inputNumber
+                id="recommendedBedTempC"
+                formControlName="recommendedBedTempC"
+                [min]="0"
+                [max]="150"
+                [step]="5"
+                suffix="°C"
+                class="w-full"
+                [class.ng-invalid]="getFieldError('recommendedBedTempC')"
+              />
+              <small class="text-red-500" *ngIf="getFieldError('recommendedBedTempC')">
+                {{ getFieldError('recommendedBedTempC') }}
+              </small>
+            </div>
+
+          </div>
+        </div>
+
+        <p-divider />
+
+        <!-- Material Characteristics Section -->
+        <div>
+          <h3 class="text-lg font-medium text-gray-800 mb-4">Material Characteristics</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            <div class="space-y-2">
+              <label for="requiresHeatedBed" class="block text-sm font-medium text-gray-700">Requires Heated Bed</label>
+              <p-toggleButton
+                id="requiresHeatedBed"
+                formControlName="requiresHeatedBed"
+                onLabel="Yes"
+                offLabel="No"
+                onIcon="pi pi-sun"
+                offIcon="pi pi-times"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label for="requiresChamberHeating" class="block text-sm font-medium text-gray-700">Requires Chamber
+                Heating</label>
+              <p-toggleButton
+                id="requiresChamberHeating"
+                formControlName="requiresChamberHeating"
+                onLabel="Yes"
+                offLabel="No"
+                onIcon="pi pi-home"
+                offIcon="pi pi-times"
+                class="w-full"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label for="supportsSoluble" class="block text-sm font-medium text-gray-700">Supports Soluble</label>
+              <p-toggleButton
+                id="supportsSoluble"
+                formControlName="supportsSoluble"
+                onLabel="Yes"
+                offLabel="No"
+                onIcon="pi pi-droplet"
+                offIcon="pi pi-times"
+                class="w-full"
+              />
+            </div>
+
+          </div>
+        </div>
+
+        <p-divider />
+
+        <!-- Advanced Properties Section -->
+        <div>
+          <h3 class="text-lg font-medium text-gray-800 mb-4">Advanced Properties</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div class="space-y-2">
+              <label for="shrinkageFactor" class="block text-sm font-medium text-gray-700">Shrinkage Factor *</label>
+              <p-inputNumber
+                id="shrinkageFactor"
+                formControlName="shrinkageFactor"
+                mode="decimal"
+                [minFractionDigits]="3"
+                [maxFractionDigits]="4"
+                [min]="0"
+                [max]="1"
+                [step]="0.001"
+                class="w-full"
+                [class.ng-invalid]="getFieldError('shrinkageFactor')"
+              />
+              <small class="text-gray-500 text-xs">Typical values: PLA: 0.002-0.005, ABS: 0.006-0.008</small>
+              <small class="text-red-500" *ngIf="getFieldError('shrinkageFactor')">
+                {{ getFieldError('shrinkageFactor') }}
+              </small>
+            </div>
+
+            <div class="space-y-2">
+              <label for="image" class="block text-sm font-medium text-gray-700">Image URL</label>
+              <input
+                id="image"
+                type="url"
+                pInputText
+                formControlName="image"
+                placeholder="https://example.com/material-image.jpg"
+                class="w-full"
+              />
+              <small class="text-gray-500 text-xs">Optional: URL to material image</small>
+            </div>
+
+          </div>
+
+          <!-- Image Preview -->
+          <div class="mt-4" *ngIf="materialForm.get('image')?.value">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Image Preview</label>
+            <div
+              class="w-32 h-32 border border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+              <img
+                [src]="materialForm.get('image')?.value"
+                [alt]="materialForm.get('name')?.value || 'Material'"
+                class="w-full h-full object-cover"
+                (error)="onImageError($event)"
+              />
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </p-card>
+
+    <!-- Form Actions -->
+    <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+      <p-button
+        label="Cancel"
+        icon="pi pi-times"
+        severity="secondary"
+        (onClick)="onCancelClick()"
+        styleClass="p-button-text"
+      />
+      <p-button
+        [label]="isNew() ? 'Create Material' : 'Update Material'"
+        [icon]="isNew() ? 'pi pi-plus' : 'pi pi-check'"
+        (onClick)="onSaveClick()"
+        [disabled]="!isFormValid"
+        styleClass="p-button-raised"
+      />
+    </div>
+
+  </form>
+</div>

@@ -1,88 +1,58 @@
-<div
-  class="simulator-container h-screen flex flex-col lg:flex-row bg-gradient-to-br"
->
+<div class="simulator-container h-screen flex flex-col lg:flex-row bg-gradient-to-br">
   <!-- Mobile Header -->
-  <div
-    class="lg:hidden shadow-lg p-4 flex items-center justify-between border-b"
-  >
+  <div class="lg:hidden shadow-lg p-4 flex items-center justify-between border-b">
     <h1 class="text-xl font-bold text-gray-800">G-Code Simulator</h1>
     <div class="flex gap-2">
-      <p-button
-        icon="pi pi-bars"
-        (onClick)="sidebarVisible.set(true)"
-        severity="secondary"
-        [text]="true"
-        size="small"
-      />
-      <p-button
-        icon="pi pi-chart-line"
-        (onClick)="showCommandDialog.set(true)"
-        severity="info"
-        [text]="true"
-        size="small"
-      />
+      <p-button icon="pi pi-bars" (onClick)="sidebarVisible.set(true)" severity="secondary" [text]="true"
+                size="small" />
+      <p-button icon="pi pi-chart-line" (onClick)="showCommandDialog.set(true)" severity="info" [text]="true"
+                size="small" />
     </div>
   </div>
 
   <!-- 3D Viewport -->
-  <div
-    class="canvas-container flex-1 relative bg-gradient-to-b from-gray-900 to-gray-800 overflow-hidden"
-    [ngClass]="{
-      'rounded-l-lg': !isMobile(),
-      'h-1/2': isMobile(),
-      'lg:h-full': isMobile()
-    }"
-  >
-    <canvas
-      #canvas
-      class="w-full h-full block cursor-grab active:cursor-grabbing"
-    ></canvas>
+  <div class="canvas-container flex-1 relative bg-gradient-to-b from-gray-900 to-gray-800 overflow-hidden"
+       [ngClass]="{
+         'rounded-l-lg': !isMobile(),
+         'h-1/2': isMobile()
+       }">
+    <canvas #canvas class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
 
-    <!-- Animated Status Overlays -->
+    <!-- Status Overlays -->
     <div class="absolute top-4 left-4 space-y-3">
       <!-- Main Status -->
       <div
         class="glass-panel backdrop-blur-md bg-black/20 border border-white/10 rounded-xl p-4 text-white transform transition-all duration-300 hover:scale-105"
-        [@slideIn]="'in'"
-      >
+        [@slideIn]>
         <div class="space-y-3 text-sm font-mono">
           <div class="flex justify-between items-center">
             <span class="text-gray-300">State:</span>
-            <p-tag
-              [value]="simulationState()"
-              [severity]="getStateSeverity(simulationState())"
-              class="ml-2 animate-pulse"
-              [ngClass]="{ 'animate-bounce': simulationState() === 'running' }"
-            />
+            <p-tag [value]="simulationState()" [severity]="getStateSeverity(simulationState())"
+                   class="ml-2" [class.animate-pulse]="simulationState() === 'running'" />
           </div>
 
           <div class="flex justify-between items-center">
             <span class="text-gray-300">Objects:</span>
-            <span class="text-blue-400 font-bold">{{
-                getTotalPathObjects()
-              }}</span>
+            <span class="text-blue-400 font-bold">{{ getTotalPathObjects() }}</span>
           </div>
-
           <div class="flex justify-between items-center">
             <span class="text-gray-300">FPS:</span>
-            <span
-              class="text-green-400 font-bold"
-              [ngClass]="{ 'text-red-400': getCurrentFPS() < 30 }"
-            >
+            <span class="font-bold" [class.text-green-400]="getCurrentFPS() >= 30"
+                  [class.text-red-400]="getCurrentFPS() < 30">
               {{ getCurrentFPS() }}
             </span>
           </div>
-
           <div class="flex justify-between items-center">
             <span class="text-gray-300">Layer:</span>
             <span class="text-white font-bold text-lg">
-              {{ printerState().currentLayer }} /
-              {{ printerState().totalLayers }}
+              {{ printerState().currentLayer }} / {{ printerState().totalLayers }}
             </span>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-gray-300">Progress:</span>
-            <span class="text-green-400 font-bold text-lg">
+            <span class="text-green-400 font-bold text-lg"
+                  [pTooltip]="'Layer-based progress. Commands: ' + commandProgress().toFixed(1) + '%'"
+                  tooltipPosition="left">
               {{ printerState().printProgress.toFixed(1) }}%
             </span>
           </div>
@@ -90,73 +60,68 @@
       </div>
 
       <!-- Progress Bar -->
-      <div
-        class="glass-panel backdrop-blur-md bg-black/20 border border-white/10 rounded-xl p-3 w-64"
-        [@slideIn]="'in'"
-      >
-        <p-progressBar
-          [value]="printerState().printProgress"
-          [showValue]="false"
-          class="h-3 rounded-full overflow-hidden"
-          styleClass="custom-progress"
-        />
+      <div class="glass-panel backdrop-blur-md bg-black/20 border border-white/10 rounded-xl p-3 w-64" [@slideIn]>
+        <p-progressBar [value]="printerState().printProgress" [showValue]="false"
+                       class="h-3 rounded-full overflow-hidden" styleClass="custom-progress" />
+      </div>
+
+      <!-- Loading Progress -->
+      <div *ngIf="simulationState() === 'loading'"
+           class="glass-panel backdrop-blur-md bg-black/20 border border-white/10 rounded-xl p-3 w-64" [@slideIn]>
+        <div class="text-white text-sm mb-2">Loading G-Code...</div>
+        <p-progressBar [value]="loadingProgress()" [showValue]="true"
+                       class="h-3 rounded-full overflow-hidden" styleClass="custom-progress" />
+      </div>
+
+      <!-- Jump Loading Progress -->
+      <div *ngIf="isJumping()"
+           class="glass-panel backdrop-blur-md bg-black/20 border border-white/10 rounded-xl p-3 w-64" [@slideIn]>
+        <div class="text-white text-sm mb-2">
+          <i class="pi pi-spin pi-spinner mr-2"></i>
+          Jumping to Command {{ jumpTargetValue() }}...
+        </div>
+        <p-progressBar [value]="jumpProgress()" [showValue]="true"
+                       class="h-3 rounded-full overflow-hidden" styleClass="custom-progress" />
+        <div class="text-xs text-gray-300 mt-1">Waiting for buffer to load...</div>
       </div>
     </div>
 
     <!-- Position Info - Desktop Only -->
-    <div
-      class="hidden lg:block absolute top-4 right-4 glass-panel backdrop-blur-md bg-black/20 border border-white/10 rounded-xl p-4 text-white"
-      [@slideIn]="'in'"
-    >
+    <div *ngIf="!isMobile()"
+         class="absolute top-4 right-4 glass-panel backdrop-blur-md bg-black/20 border border-white/10 rounded-xl p-4 text-white"
+         [@slideIn]>
       <div class="space-y-2 text-sm font-mono">
         <h3 class="text-blue-400 font-semibold mb-3">Position</h3>
         <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-          <span class="text-gray-300">X:</span>
-          <span class="text-white font-bold"
-          >{{ printerState().position.x.toFixed(2) }}mm</span
-          >
-          <span class="text-gray-300">Y:</span>
-          <span class="text-white font-bold"
-          >{{ printerState().position.y.toFixed(2) }}mm</span
-          >
-          <span class="text-gray-300">Z:</span>
-          <span class="text-white font-bold"
-          >{{ printerState().position.z.toFixed(2) }}mm</span
-          >
-          <span class="text-gray-300">Feed:</span>
-          <span class="text-white font-bold"
-          >{{ printerState().feedRate }}mm/min</span
-          >
+          <span class="text-gray-300">X:</span><span
+          class="text-white font-bold">{{ printerState().position.x.toFixed(2) }}mm</span>
+          <span class="text-gray-300">Y:</span><span
+          class="text-white font-bold">{{ printerState().position.y.toFixed(2) }}mm</span>
+          <span class="text-gray-300">Z:</span><span
+          class="text-white font-bold">{{ printerState().position.z.toFixed(2) }}mm</span>
+          <span class="text-gray-300">Feed:</span><span class="text-white font-bold">{{ printerState().feedRate }}
+          mm/min</span>
         </div>
       </div>
     </div>
 
     <!-- Extruder Status - Desktop Only -->
-    <div
-      class="hidden lg:block absolute bottom-4 left-4 glass-panel backdrop-blur-md bg-black/20 border border-white/10 rounded-xl p-4 text-white"
-      [@slideIn]="'in'"
-    >
+    <div *ngIf="!isMobile()"
+         class="absolute bottom-4 left-4 glass-panel backdrop-blur-md bg-black/20 border border-white/10 rounded-xl p-4 text-white"
+         [@slideIn]>
       <div class="space-y-2 text-sm font-mono">
         <h3 class="text-red-400 font-semibold mb-3">Extruder</h3>
         <div class="grid grid-cols-2 gap-x-4 gap-y-2">
           <span class="text-gray-300">Status:</span>
-          <p-tag
-            [value]="printerState().isExtruding ? 'ACTIVE' : 'IDLE'"
-            [severity]="printerState().isExtruding ? 'success' : 'secondary'"
-            [ngClass]="{ 'animate-pulse': printerState().isExtruding }"
-          />
-          <span class="text-gray-300">E-Pos:</span>
-          <span class="text-white font-bold"
-          >{{ printerState().extruderPosition.toFixed(2) }}mm</span
-          >
-          <span class="text-gray-300">Temp:</span>
-          <span class="text-orange-400 font-bold"
-          >{{ printerState().temperature }}°C</span
-          >
-          <span class="text-gray-300">Bed:</span>
-          <span class="text-blue-400 font-bold"
-          >{{ printerState().bedTemperature }}°C</span
-          >
+          <p-tag [value]="printerState().isExtruding ? 'ACTIVE' : 'IDLE'"
+                 [severity]="printerState().isExtruding ? 'success' : 'secondary'"
+                 [class.animate-pulse]="printerState().isExtruding" />
+          <span class="text-gray-300">E-Pos:</span><span
+          class="text-white font-bold">{{ printerState().extruderPosition.toFixed(2) }}mm</span>
+          <span class="text-gray-300">Temp:</span><span
+          class="text-orange-400 font-bold">{{ printerState().temperature }}°C</span>
+          <span class="text-gray-300">Bed:</span><span
+          class="text-blue-400 font-bold">{{ printerState().bedTemperature }}°C</span>
         </div>
       </div>
     </div>
@@ -164,29 +129,22 @@
     <!-- Time Info -->
     <div
       class="absolute bottom-4 right-4 glass-panel backdrop-blur-md bg-black/20 border border-white/10 rounded-xl p-4 text-white"
-      [@slideIn]="'in'"
-    >
+      [@slideIn]>
       <div class="space-y-2 text-sm font-mono">
         <h3 class="text-green-400 font-semibold mb-3">Timing</h3>
         <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-          <span class="text-gray-300">Elapsed:</span>
-          <span class="text-white font-bold">{{
-              formatTime(printerState().executionTime)
-            }}</span>
-          <span class="text-gray-300">Remaining:</span>
-          <span class="text-white font-bold">{{
-              formatTime(printerState().estimatedTimeRemaining)
-            }}</span>
+          <span class="text-gray-300">Elapsed:</span><span
+          class="text-white font-bold">{{ formatTime(printerState().executionTime) }}</span>
+          <span class="text-gray-300">Remaining:</span><span
+          class="text-white font-bold">{{ formatTime(printerState().estimatedTimeRemaining) }}</span>
         </div>
       </div>
     </div>
 
     <!-- Error Display -->
-    <div
-      *ngIf="errorMessage()"
-      class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-600/90 backdrop-blur-sm rounded-xl p-6 text-white shadow-2xl border border-red-500/50"
-      [@slideIn]="'in'"
-    >
+    <div *ngIf="errorMessage()" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
+                bg-red-600/90 backdrop-blur-sm rounded-xl p-6 text-white shadow-2xl border border-red-500/50"
+         [@slideIn]>
       <div class="flex items-center gap-3">
         <i class="pi pi-exclamation-triangle text-2xl animate-bounce"></i>
         <div>
@@ -197,705 +155,476 @@
     </div>
 
     <!-- Floating Action Button - Mobile -->
-    <div class="lg:hidden absolute bottom-6 right-6">
-      <p-speedDial
-        [model]="speedDialItems()"
-        direction="up"
-        [transitionDelay]="80"
-        showIcon="pi pi-cog"
-        hideIcon="pi pi-times"
-        buttonClassName="p-button-rounded p-button-lg p-button-help"
-      />
+    <div *ngIf="isMobile()" class="absolute bottom-6 right-6">
+      <p-speedDial [model]="speedDialItems()" direction="up" [transitionDelay]="80"
+                   showIcon="pi pi-cog" hideIcon="pi pi-times"
+                   buttonClassName="p-button-rounded p-button-lg p-button-help" />
     </div>
   </div>
-  <!-- Questo era il div mancante per chiudere canvas-container -->
 
   <!-- Control Panel - Desktop -->
-  <div
-    class="hidden lg:block control-panel w-96 backdrop-blur-sm border-l border-gray-200/50 overflow-y-auto shadow-2xl"
-  >
-    <div>
-      <!-- Main Controls -->
-      <p-panel
-        header="Simulation Controls"
-        [toggleable]="true"
-        styleClass="modern-panel"
-      >
-        <div class="space-y-4">
-          <!-- Primary Controls -->
-          <div class="grid grid-cols-4 gap-2">
-            <p-button
-              icon="pi pi-play"
-              [disabled]="!canStart()"
-              (onClick)="start()"
-              severity="success"
-              size="small"
-              pTooltip="Start simulation"
-              [rounded]="true"
-              [raised]="true"
-            />
-            <p-button
-              icon="pi pi-pause"
-              [disabled]="!canPause()"
-              (onClick)="pause()"
-              severity="info"
-              size="small"
-              pTooltip="Pause/Resume"
-              [rounded]="true"
-              [raised]="true"
-            />
-            <p-button
-              icon="pi pi-stop"
-              [disabled]="!canStop()"
-              (onClick)="stop()"
-              severity="danger"
-              size="small"
-              pTooltip="Stop simulation"
-              [rounded]="true"
-              [raised]="true"
-            />
-            <p-button
-              icon="pi pi-refresh"
-              [disabled]="!canReset()"
-              (onClick)="reset()"
-              severity="secondary"
-              size="small"
-              pTooltip="Reset to beginning"
-              [rounded]="true"
-              [raised]="true"
-            />
-          </div>
+  <div *ngIf="!isMobile()"
+       class="control-panel w-96 backdrop-blur-sm border-l border-gray-200/50 overflow-y-auto shadow-2xl">
+    <!-- Main Controls -->
+    <p-panel header="Simulation Controls" [toggleable]="true" styleClass="modern-panel">
+      <div class="space-y-4">
+        <!-- Primary Controls -->
+        <div class="grid grid-cols-4 gap-2">
+          <p-button icon="pi pi-play" [disabled]="!canStart()" (onClick)="start()" severity="success" size="small"
+                    pTooltip="Start simulation" [rounded]="true" [raised]="true" />
+          <p-button icon="pi pi-pause" [disabled]="!canPause()" (onClick)="pause()" severity="info" size="small"
+                    pTooltip="Pause/Resume" [rounded]="true" [raised]="true" />
+          <p-button icon="pi pi-stop" [disabled]="!canStop()" (onClick)="stop()" severity="danger" size="small"
+                    pTooltip="Stop simulation" [rounded]="true" [raised]="true" />
+          <p-button icon="pi pi-refresh" [disabled]="!canReset()" (onClick)="reset()" severity="secondary" size="small"
+                    pTooltip="Reset to beginning" [rounded]="true" [raised]="true" />
+        </div>
 
-          <!-- Step Controls -->
-          <div class="grid grid-cols-4 gap-2">
-            <p-button
-              icon="pi pi-step-backward"
-              [disabled]="printerState().currentCommandIndex === 0"
-              (onClick)="stepBack()"
-              severity="secondary"
-              size="small"
-              pTooltip="Step back 1 command"
-              [text]="true"
-            />
-            <p-button
-              icon="pi pi-backward"
-              [disabled]="printerState().currentCommandIndex < 10"
-              (onClick)="stepBack(10)"
-              severity="secondary"
-              size="small"
-              pTooltip="Step back 10 commands"
-              [text]="true"
-            />
-            <p-button
-              icon="pi pi-forward"
-              [disabled]="
-                printerState().currentCommandIndex >=
-                printerState().totalCommands - 10
-              "
-              (onClick)="stepForward(10)"
-              severity="secondary"
-              size="small"
-              pTooltip="Step forward 10 commands"
-              [text]="true"
-            />
-            <p-button
-              icon="pi pi-step-forward"
-              [disabled]="
-                printerState().currentCommandIndex >=
-                printerState().totalCommands - 1
-              "
-              (onClick)="stepForward()"
-              severity="secondary"
-              size="small"
-              pTooltip="Step forward 1 command"
-              [text]="true"
-            />
-          </div>
+        <!-- Step Controls -->
+        <div class="grid grid-cols-4 gap-2">
+          <p-button icon="pi pi-step-backward" [disabled]="!canStep() || printerState().currentCommandIndex === 0"
+                    (onClick)="stepBack()"
+                    severity="secondary" size="small" pTooltip="Step back 1 command" [text]="true" />
+          <p-button icon="pi pi-backward" [disabled]="!canStep() || printerState().currentCommandIndex < 10"
+                    (onClick)="stepBack(10)"
+                    severity="secondary" size="small" pTooltip="Step back 10 commands" [text]="true" />
+          <p-button icon="pi pi-forward" [disabled]="!canStep()" (onClick)="stepForward(10)"
+                    severity="secondary" size="small" pTooltip="Step forward 10 commands" [text]="true" />
+          <p-button icon="pi pi-step-forward" [disabled]="!canStep()" (onClick)="stepForward()"
+                    severity="secondary" size="small" pTooltip="Step forward 1 command" [text]="true" />
+        </div>
 
-          <!-- Jump Controls -->
-          <div class="space-y-2">
-            <label
-              class="block text-sm font-semibold text-gray-700"
-              for="jumpTargetInput"
-            >Jump to Command</label
-            >
-            <div class="flex gap-2">
-              <p-inputNumber
-                [(ngModel)]="jumpTarget"
-                [min]="0"
-                [max]="printerState().totalCommands - 1"
-                [showButtons]="true"
-                [step]="1"
-                size="small"
-                class="flex-1"
-                styleClass="modern-input"
-                id="jumpTargetInput"
-              />
-              <p-button
-                label="Jump"
-                (onClick)="jumpToCommand()"
-                severity="info"
-                size="small"
-                [raised]="true"
-              />
-            </div>
+        <!-- Jump Controls -->
+        <div class="space-y-2">
+          <label class="block text-sm font-semibold text-gray-700">Jump to Command</label>
+          <div class="flex gap-2">
+            <p-inputNumber [(ngModel)]="jumpTarget" [min]="0"
+                           [showButtons]="true" [step]="1" size="small" class="flex-1" styleClass="modern-input"
+                           placeholder="Command number" />
+            <p-button label="Jump" (onClick)="jumpToCommand()" severity="info" size="small" [raised]="true"
+                      [loading]="isJumping()" loadingIcon="pi pi-spin pi-spinner" />
+          </div>
+          <small class="text-gray-500">
+            <span *ngIf="!isJumping()">
+              Enter any command number (buffer will load automatically)
+            </span>
+            <span *ngIf="isJumping()" class="text-blue-600">
+              <i class="pi pi-spin pi-spinner mr-1"></i>
+              Loading buffer... {{ jumpProgress().toFixed(1) }}%
+            </span>
+          </small>
+        </div>
+      </div>
+    </p-panel>
+
+    <!-- Progress Section -->
+    <p-panel header="Progress" [toggleable]="true" styleClass="modern-panel">
+      <div class="space-y-4">
+        <div>
+          <div class="flex justify-between text-sm mb-2">
+            <span class="font-medium">Overall Progress (Layer-based)</span>
+            <span class="font-bold text-blue-600"
+                  [pTooltip]="'Layer progress: ' + printerState().printProgress.toFixed(1) + '%. Command progress: ' + commandProgress().toFixed(1) + '%'"
+                  tooltipPosition="left">
+              {{ printerState().printProgress.toFixed(1) }}%
+            </span>
+          </div>
+          <p-progressBar [value]="printerState().printProgress" [showValue]="false"
+                         styleClass="h-3 rounded-full custom-progress" />
+          <div class="flex justify-between text-xs text-gray-500 mt-1">
+            <span>Layer {{ printerState().currentLayer }}</span>
+            <span>Commands {{ printerState().currentCommandIndex }} / {{ printerState().totalCommands }}</span>
           </div>
         </div>
-      </p-panel>
-
-      <!-- Progress Section -->
-      <p-panel header="Progress" [toggleable]="true" styleClass="modern-panel">
-        <div class="space-y-4">
-          <div>
-            <div class="flex justify-between text-sm mb-2">
-              <span class="font-medium">Overall Progress</span>
-              <span class="font-bold text-blue-600"
-              >{{ printerState().printProgress.toFixed(1) }}%</span
-              >
-            </div>
-            <p-progressBar
-              [value]="printerState().printProgress"
-              [showValue]="false"
-              styleClass="h-3 rounded-full custom-progress"
-            />
+        <div>
+          <div class="flex justify-between text-sm mb-2">
+            <span class="font-medium">Layer Progress</span>
+            <span class="font-bold text-green-600">{{ printerState().currentLayer }}
+              / {{ printerState().totalLayers }}</span>
           </div>
-
-          <div>
-            <div class="flex justify-between text-sm mb-2">
-              <span class="font-medium">Layer Progress</span>
-              <span class="font-bold text-green-600">
-                {{ printerState().currentLayer }} /
-                {{ printerState().totalLayers }}
-              </span>
-            </div>
-            <p-progressBar
-              [value]="
-                (printerState().currentLayer /
-                  Math.max(1, printerState().totalLayers)) *
-                100
-              "
-              [showValue]="false"
-              styleClass="h-3 rounded-full custom-progress-green"
-            />
-          </div>
+          <p-progressBar [value]="(printerState().currentLayer / Math.max(1, printerState().totalLayers)) * 100"
+                         [showValue]="false" styleClass="h-3 rounded-full custom-progress-green" />
         </div>
-      </p-panel>
+      </div>
+    </p-panel>
 
-      <!-- Settings Accordion -->
-      <p-accordion [multiple]="true" styleClass="modern-accordion">
-        <!-- Simulation Settings -->
-        <p-accordionTab header="Simulation Settings" [selected]="true">
-          <div class="space-y-4">
-            <!-- Animation Speed -->
+    <!-- Settings Accordion -->
+    <p-accordion [multiple]="true" styleClass="modern-accordion">
+      <!-- Simulation Settings -->
+      <p-accordionTab header="Simulation Settings" [selected]="true">
+        <div class="space-y-4">
+          <!-- Animation Speed -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Animation Speed: {{ animationSpeedValue() }}
+              x</label>
+
+            <!-- Speed Slider -->
             <div>
-              <label
-                class="block text-sm font-semibold text-gray-700 mb-2"
-                for="animationSpeedSlider"
-              >
-                Animation Speed: {{ animationSpeedValue() }}x
-              </label>
-              <p-slider
-                [(ngModel)]="animationSpeedValue"
-                [min]="0.1"
-                [max]="1000"
-                [step]="0.1"
-                (onChange)="updateAnimationSpeed($event)"
-                styleClass="modern-slider"
-                id="animationSpeedSlider"
-              />
+              <p-slider [(ngModel)]="animationSpeedValue" [min]="0.1" [max]="10000" [step]="1"
+                        (onChange)="updateAnimationSpeed($event)" styleClass="modern-slider" />
               <div class="flex justify-between text-xs text-gray-500 mt-1">
                 <span>0.1x</span>
                 <span>1000x</span>
               </div>
             </div>
 
-            <!-- Filament Color -->
-            <div>
-              <label
-                class="block text-sm font-semibold text-gray-700 mb-2"
-                for="filamentColorPicker"
-              >Filament Color</label
-              >
-              <p-colorPicker
-                [(ngModel)]="filamentColorValue"
-                (onChange)="updateFilamentColor($event)"
-                format="hex"
-                styleClass="modern-colorpicker"
-                id="filamentColorPicker"
-              />
-            </div>
+          </div>
+          <!-- Filament Color -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Filament Color</label>
+            <p-colorPicker [(ngModel)]="filamentColorValue" (onChange)="updateFilamentColor($event)"
+                           format="hex" styleClass="modern-colorpicker" />
+          </div>
 
-            <!-- Layer Height -->
-            <div>
-              <label
-                class="block text-sm font-semibold text-gray-700 mb-2"
-                for="layerHeightInput"
-              >Layer Height</label
-              >
-              <p-inputNumber
-                [(ngModel)]="layerHeightValue"
-                [min]="0.05"
-                [max]="1"
-                [step]="0.05"
-                (onInput)="updateLayerHeight($event)"
-                suffix="mm"
-                size="small"
-                styleClass="modern-input w-full"
-                id="layerHeightInput"
-              />
-            </div>
+          <!-- Layer Height -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Layer Height</label>
+            <p-inputNumber [(ngModel)]="layerHeightValue" [min]="0.05" [max]="1" [step]="0.05"
+                           (onInput)="updateLayerHeight($event)" suffix="mm" size="small"
+                           styleClass="modern-input w-full" />
+          </div>
 
-            <!-- Build Volume -->
-            <div>
-              <label
-                class="block text-sm font-semibold text-gray-700 mb-2"
-                for="buildVolumeXInput"
-              >Build Volume (mm)</label
-              >
-              <div class="grid grid-cols-3 gap-2">
-                <p-inputNumber
-                  [(ngModel)]="buildVolumeX"
-                  [min]="50"
-                  [max]="500"
-                  [step]="10"
-                  (onInput)="updateBuildVolume()"
-                  placeholder="X"
-                  size="small"
-                  styleClass="modern-input"
-                  id="buildVolumeXInput"
-                />
-                <p-inputNumber
-                  [(ngModel)]="buildVolumeY"
-                  [min]="50"
-                  [max]="500"
-                  [step]="10"
-                  (onInput)="updateBuildVolume()"
-                  placeholder="Y"
-                  size="small"
-                  styleClass="modern-input"
-                />
-                <p-inputNumber
-                  [(ngModel)]="buildVolumeZ"
-                  [min]="50"
-                  [max]="500"
-                  [step]="10"
-                  (onInput)="updateBuildVolume()"
-                  placeholder="Z"
-                  size="small"
-                  styleClass="modern-input"
-                />
-              </div>
+          <!-- Build Volume -->
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Build Volume (mm)</label>
+            <div class="grid grid-cols-3 gap-2">
+              <p-inputNumber [(ngModel)]="buildVolumeX" [min]="50" [max]="500" [step]="10"
+                             (onInput)="updateBuildVolume()" placeholder="X" size="small" styleClass="modern-input" />
+              <p-inputNumber [(ngModel)]="buildVolumeY" [min]="50" [max]="500" [step]="10"
+                             (onInput)="updateBuildVolume()" placeholder="Y" size="small" styleClass="modern-input" />
+              <p-inputNumber [(ngModel)]="buildVolumeZ" [min]="50" [max]="500" [step]="10"
+                             (onInput)="updateBuildVolume()" placeholder="Z" size="small" styleClass="modern-input" />
             </div>
           </div>
-        </p-accordionTab>
+        </div>
+      </p-accordionTab>
 
-        <!-- Display Settings -->
-        <p-accordionTab header="Display Settings">
-          <div class="space-y-4">
-            <div
-              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-            >
-              <label
-                class="text-sm font-semibold text-gray-700"
-                for="showTravelMovesToggle"
-              >Show Travel Moves</label
-              >
-              <p-toggleButton
-                [(ngModel)]="showTravelMoves"
-                onIcon="'pi pi-eye'"
-                offIcon="'pi pi-eye-slash'"
-                (onChange)="updateShowTravelMoves($event)"
-                size="small"
-                styleClass="modern-toggle"
-                id="showTravelMovesToggle"
-              />
-            </div>
-
-            <div
-              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-            >
-              <label
-                class="text-sm font-semibold text-gray-700"
-                for="showBuildPlateToggle"
-              >Show Build Plate</label
-              >
-              <p-toggleButton
-                [(ngModel)]="showBuildPlate"
-                onIcon="'pi pi-eye'"
-                offIcon="'pi pi-eye-slash'"
-                (onChange)="updateShowBuildPlate($event)"
-                size="small"
-                styleClass="modern-toggle"
-                id="showBuildPlateToggle"
-              />
-            </div>
+      <!-- Display Settings -->
+      <p-accordionTab header="Display Settings">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <label class="text-sm font-semibold text-gray-700">Show Travel Moves</label>
+            <p-toggleButton [(ngModel)]="showTravelMoves" onIcon="pi pi-eye" offIcon="pi pi-eye-slash"
+                            (onChange)="updateShowTravelMoves($event)" size="small" styleClass="modern-toggle" />
           </div>
-        </p-accordionTab>
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <label class="text-sm font-semibold text-gray-700">Show Build Plate</label>
+            <p-toggleButton [(ngModel)]="showBuildPlate" onIcon="pi pi-eye" offIcon="pi pi-eye-slash"
+                            (onChange)="updateShowBuildPlate($event)" size="small" styleClass="modern-toggle" />
+          </div>
+        </div>
+      </p-accordionTab>
 
-        <!-- Camera Controls -->
-        <p-accordionTab header="Camera Controls">
+      <!-- Camera Controls -->
+      <p-accordionTab header="Camera Controls">
+        <div class="grid grid-cols-2 gap-2">
+          <p-button label="Reset" icon="pi pi-home" (onClick)="resetCamera()" severity="secondary" size="small"
+                    [text]="true" />
+          <p-button label="Focus" icon="pi pi-search-plus" (onClick)="focusOnNozzle()" severity="secondary" size="small"
+                    [text]="true" />
+          <p-button label="Top View" icon="pi pi-arrow-up" (onClick)="setTopView()" severity="secondary" size="small"
+                    [text]="true" />
+          <p-button label="Isometric" icon="pi pi-th-large" (onClick)="setIsometricView()" severity="secondary"
+                    size="small" [text]="true" />
+        </div>
+      </p-accordionTab>
+
+      <!-- Model Positioning Section -->
+      <p-accordionTab header="Model Positioning">
+        <div class="space-y-4">
+          <!-- Auto-Center Toggle -->
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div class="flex-1">
+              <label class="text-sm font-semibold text-gray-700">Auto-Center Model</label>
+              <p class="text-xs text-gray-500 mt-1">Automatically center the model in the build volume</p>
+            </div>
+            <p-toggleButton
+              [(ngModel)]="autoCenterModel"
+              onIcon="pi pi-check"
+              offIcon="pi pi-times"
+              (onChange)="updateAutoCenterModel($event)"
+              size="small"
+              styleClass="modern-toggle" />
+          </div>
+
+          <!-- Manual Center Button -->
           <div class="grid grid-cols-2 gap-2">
             <p-button
-              label="Reset"
-              icon="pi pi-home"
-              (onClick)="resetCamera()"
+              label="Center Model"
+              icon="pi pi-crosshairs"
+              (onClick)="centerModel()"
               severity="secondary"
               size="small"
-              [text]="true"
-            />
+              [text]="true" />
+
             <p-button
-              label="Focus"
-              icon="pi pi-search-plus"
+              label="Focus Model"
+              icon="pi pi-eye"
               (onClick)="focusOnNozzle()"
               severity="secondary"
               size="small"
-              [text]="true"
-            />
-            <p-button
-              label="Top View"
-              icon="pi pi-arrow-up"
-              (onClick)="setTopView()"
-              severity="secondary"
-              size="small"
-              [text]="true"
-            />
-            <p-button
-              label="Isometric"
-              icon="pi pi-th-large"
-              (onClick)="setIsometricView()"
-              severity="secondary"
-              size="small"
-              [text]="true"
-            />
+              [text]="true" />
           </div>
-        </p-accordionTab>
 
-        <p-accordionTab header="Advanced G-Code Features">
-          <div class="space-y-4">
-            <!-- Supporto curve Bezier -->
-            <div
-              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-            >
-              <label
-                class="text-sm font-semibold text-gray-700"
-                for="showBezierControlsToggle"
-              >
-                Show Bezier Control Points
-              </label>
-              <p-toggleButton
-                [(ngModel)]="showBezierControls"
-                onIcon="pi pi-eye"
-                offIcon="pi pi-eye-slash"
-                (onChange)="updateShowBezierControls($event)"
-                size="small"
-                styleClass="modern-toggle"
-                id="showBezierControlsToggle"
-              />
+          <!-- Model Bounds Info -->
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div class="flex items-center gap-2 mb-2">
+              <i class="pi pi-info-circle text-blue-600"></i>
+              <label class="text-sm font-semibold text-blue-800">Model Info</label>
             </div>
 
-            <!-- Performance settings -->
-            <div>
-              <label
-                class="block text-sm font-semibold text-gray-700 mb-2"
-                for="maxPathPointsInput"
-              >
-                Max Path Points (Performance)
-              </label>
-              <p-inputNumber
-                [(ngModel)]="maxPathPoints"
-                [min]="1000"
-                [max]="100000"
-                [step]="1000"
-                (onInput)="updateMaxPathPoints($event)"
-                size="small"
-                styleClass="modern-input w-full"
-                id="maxPathPointsInput"
-              />
-              <small class="text-gray-500"
-              >Higher values = better quality, lower performance</small
-              >
-            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs text-blue-700">
+              <span>Bounds:</span>
+              <span class="font-mono">{{
+                  getModelBounds()?.bounds ?
+                    'X: ' + (getModelBounds().bounds.max.x - getModelBounds().bounds.min.x).toFixed(1) + 'mm' : 'N/A'
+                }}</span>
 
-            <!-- Batch size for updates -->
-            <div>
-              <label
-                class="block text-sm font-semibold text-gray-700 mb-2"
-                for="batchSizeInput"
-              >
-                Batch Update Size
-              </label>
-              <p-inputNumber
-                [(ngModel)]="batchUpdateSize"
-                [min]="10"
-                [max]="1000"
-                [step]="10"
-                (onInput)="updateBatchSize($event)"
-                size="small"
-                styleClass="modern-input w-full"
-                id="batchSizeInput"
-              />
-              <small class="text-gray-500"
-              >Lower values = smoother updates, higher CPU usage</small
-              >
-            </div>
+              <span>Offset:</span>
+              <span class="font-mono">{{
+                  getModelBounds()?.offset ?
+                    'X: ' + getModelBounds().offset.x.toFixed(1) + 'mm' : 'N/A'
+                }}</span>
 
-            <!-- Curve resolution -->
-            <div>
-              <label
-                class="block text-sm font-semibold text-gray-700 mb-2"
-                for="curveResolutionInput"
-              >
-                Curve Resolution
-              </label>
-              <p-slider
-                [(ngModel)]="curveResolution"
-                [min]="5"
-                [max]="50"
-                [step]="1"
-                (onChange)="updateCurveResolution($event)"
-                styleClass="modern-slider"
-                id="curveResolutionInput"
-              />
-              <div class="flex justify-between text-xs text-gray-500 mt-1">
-                <span>5 (Fast)</span>
-                <span>{{ curveResolution() }} segments</span>
-                <span>50 (Smooth)</span>
-              </div>
+              <span>Auto-Center:</span>
+              <span [class.text-green-600]="autoCenterModel()" [class.text-red-600]="!autoCenterModel()">
+                {{ autoCenterModel() ? 'ON' : 'OFF' }}
+              </span>
             </div>
           </div>
-        </p-accordionTab>
-      </p-accordion>
 
-      <!-- Command History Button -->
-      <p-button
-        label="View Command History"
-        icon="pi pi-chart-line"
-        (onClick)="showCommandDialog.set(true)"
-        severity="info"
-        size="small"
-        styleClass="w-full modern-button"
-        [raised]="true"
-      />
-    </div>
+          <!-- Debug Button -->
+          <p-button
+            label="Log Position Info"
+            icon="pi pi-search"
+            (onClick)="logModelPositioning()"
+            severity="help"
+            size="small"
+            [text]="true"
+            styleClass="w-full" />
+        </div>
+      </p-accordionTab>
+
+      <!-- Advanced Settings -->
+      <p-accordionTab header="Advanced Settings">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <label class="text-sm font-semibold text-gray-700">Show Bezier Control Points</label>
+            <p-toggleButton [(ngModel)]="showBezierControls" onIcon="pi pi-eye" offIcon="pi pi-eye-slash"
+                            (onChange)="updateShowBezierControls($event)" size="small" styleClass="modern-toggle" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Max Path Points (Performance)</label>
+            <p-inputNumber [(ngModel)]="maxPathPoints" [min]="1000" [max]="100000" [step]="1000"
+                           (onInput)="updateMaxPathPoints($event)" size="small" styleClass="modern-input w-full" />
+            <small class="text-gray-500">Higher values = better quality, lower performance</small>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Batch Update Size</label>
+            <p-inputNumber [(ngModel)]="batchUpdateSize" [min]="10" [max]="1000" [step]="10"
+                           (onInput)="updateBatchSize($event)" size="small" styleClass="modern-input w-full" />
+            <small class="text-gray-500">Lower values = smoother updates, higher CPU usage</small>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Buffer Size</label>
+            <p-inputNumber [(ngModel)]="bufferSize" [min]="100" [max]="10000" [step]="100"
+                           (onInput)="updateBufferSize($event)" size="small" styleClass="modern-input w-full" />
+            <small class="text-gray-500">Streaming buffer size for large files</small>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Curve Resolution</label>
+            <p-slider [(ngModel)]="curveResolution" [min]="5" [max]="50" [step]="1"
+                      (onChange)="updateCurveResolution($event)" styleClass="modern-slider" />
+            <div class="flex justify-between text-xs text-gray-500 mt-1">
+              <span>5 (Fast)</span>
+              <span>{{ curveResolution() }} segments</span>
+              <span>50 (Smooth)</span>
+            </div>
+          </div>
+        </div>
+      </p-accordionTab>
+    </p-accordion>
+
+    <!-- Command History Button -->
+    <p-button label="View Command History" icon="pi pi-chart-line" (onClick)="showCommandDialog.set(true)"
+              severity="info" size="small" styleClass="w-full modern-button" [raised]="true" />
   </div>
 
   <!-- Mobile Sidebar -->
-  <p-sidebar
-    [(visible)]="sidebarVisible"
-    position="right"
-    styleClass="w-full sm:w-96"
-    [modal]="true"
-  >
+  <p-sidebar [(visible)]="sidebarVisible" position="right" styleClass="w-full sm:w-96" [modal]="true">
     <ng-template pTemplate="header">
       <h3 class="text-xl font-bold">Controls</h3>
     </ng-template>
 
-    <div class="space-y-4">
-      <!-- Mobile Controls - Same content as desktop but in mobile-friendly layout -->
-      <p-tabView styleClass="mobile-tabs">
-        <p-tabPanel header="Controls" leftIcon="pi pi-play">
-          <div class="space-y-4">
-            <!-- Main Controls -->
-            <div class="grid grid-cols-2 gap-3">
-              <p-button
-                label="Start"
-                icon="pi pi-play"
-                [disabled]="!canStart()"
-                (onClick)="start(); sidebarVisible.set(false)"
-                severity="success"
-                size="small"
-                styleClass="w-full"
-              />
-              <p-button
-                label="Pause"
-                icon="pi pi-pause"
-                [disabled]="!canPause()"
-                (onClick)="pause()"
-                severity="info"
-                size="small"
-                styleClass="w-full"
-              />
-              <p-button
-                label="Stop"
-                icon="pi pi-stop"
-                [disabled]="!canStop()"
-                (onClick)="stop()"
-                severity="danger"
-                size="small"
-                styleClass="w-full"
-              />
-              <p-button
-                label="Reset"
-                icon="pi pi-refresh"
-                [disabled]="!canReset()"
-                (onClick)="reset()"
-                severity="secondary"
-                size="small"
-                styleClass="w-full"
-              />
+    <p-tabView styleClass="mobile-tabs">
+      <p-tabPanel header="Controls" leftIcon="pi pi-play">
+        <div class="space-y-4">
+          <div *ngIf="isJumping()" class="bg-blue-100 border border-blue-300 rounded p-3 mb-4">
+            <div class="flex items-center gap-2 text-blue-800 font-semibold mb-2">
+              <i class="pi pi-spin pi-spinner"></i>
+              Jumping to Command {{ jumpTargetValue() }}
             </div>
+            <p-progressBar [value]="jumpProgress()" [showValue]="true"
+                           class="h-2" styleClass="custom-progress" />
+            <div class="text-xs text-blue-600 mt-1">Please wait...</div>
+          </div>
 
-            <!-- Speed Control -->
+          <div class="grid grid-cols-2 gap-3">
+            <p-button label="Start" icon="pi pi-play" [disabled]="!canStart()"
+                      (onClick)="start(); sidebarVisible.set(false)" severity="success" size="small"
+                      styleClass="w-full" />
+            <p-button label="Pause" icon="pi pi-pause" [disabled]="!canPause()" (onClick)="pause()"
+                      severity="info" size="small" styleClass="w-full" />
+            <p-button label="Stop" icon="pi pi-stop" [disabled]="!canStop()" (onClick)="stop()"
+                      severity="danger" size="small" styleClass="w-full" />
+            <p-button label="Reset" icon="pi pi-refresh" [disabled]="!canReset()" (onClick)="reset()"
+                      severity="secondary" size="small" styleClass="w-full" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold mb-2">
+              Speed: {{ animationSpeedValue() }}x
+            </label>
+
+            <!-- Speed Slider -->
             <div>
-              <label
-                class="block text-sm font-semibold mb-2"
-                for="mobileAnimationSpeedSlider"
-              >Speed: {{ animationSpeedValue() }}x</label
-              >
-              <p-slider
-                [(ngModel)]="animationSpeedValue"
-                [min]="0.1"
-                [max]="1000"
-                [step]="0.1"
-                (onChange)="updateAnimationSpeed($event)"
-                id="mobileAnimationSpeedSlider"
-              />
+              <p-slider [(ngModel)]="animationSpeedValue" [min]="0.1" [max]="10000" [step]="1"
+                        (onChange)="updateAnimationSpeed($event)" [disabled]="isJumping()" />
             </div>
           </div>
-        </p-tabPanel>
+        </div>
+      </p-tabPanel>
 
-        <p-tabPanel header="Settings" leftIcon="pi pi-cog">
-          <div class="space-y-4">
-            <!-- Mobile-friendly settings -->
-            <div>
-              <label
-                class="block text-sm font-semibold mb-2"
-                for="mobileFilamentColorPicker"
-              >Filament Color</label
-              >
-              <p-colorPicker
-                [(ngModel)]="filamentColorValue"
-                (onChange)="updateFilamentColor($event)"
-                format="hex"
-                id="mobileFilamentColorPicker"
-              />
-            </div>
-
-            <div class="flex items-center justify-between">
-              <label
-                class="text-sm font-semibold"
-                for="mobileShowTravelMovesToggle"
-              >Travel Moves</label
-              >
-              <p-toggleButton
-                [(ngModel)]="showTravelMoves"
-                onIcon="'pi pi-eye'"
-                offIcon="'pi pi-eye-slash'"
-                (onChange)="updateShowTravelMoves($event)"
-                size="small"
-                id="mobileShowTravelMovesToggle"
-              />
-            </div>
+      <p-tabPanel header="Settings" leftIcon="pi pi-cog">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold mb-2">Filament Color</label>
+            <p-colorPicker [(ngModel)]="filamentColorValue" (onChange)="updateFilamentColor($event)" format="hex" />
           </div>
-        </p-tabPanel>
 
-        <p-tabPanel header="Info" leftIcon="pi pi-info">
-          <div class="space-y-3 text-sm">
-            <div class="grid grid-cols-2 gap-2">
-              <span class="font-medium">Position X:</span>
-              <span>{{ printerState().position.x.toFixed(2) }}mm</span>
-              <span class="font-medium">Position Y:</span>
-              <span>{{ printerState().position.y.toFixed(2) }}mm</span>
-              <span class="font-medium">Position Z:</span>
-              <span>{{ printerState().position.z.toFixed(2) }}mm</span>
-              <span class="font-medium">Temperature:</span>
-              <span>{{ printerState().temperature }}°C</span>
-            </div>
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-semibold">Travel Moves</label>
+            <p-toggleButton [(ngModel)]="showTravelMoves" onIcon="pi pi-eye" offIcon="pi pi-eye-slash"
+                            (onChange)="updateShowTravelMoves($event)" size="small" />
           </div>
-        </p-tabPanel>
-      </p-tabView>
-    </div>
+
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-semibold">Auto-Center</label>
+            <p-toggleButton
+              [(ngModel)]="autoCenterModel"
+              onIcon="pi pi-check"
+              offIcon="pi pi-times"
+              (onChange)="updateAutoCenterModel($event)"
+              size="small" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <p-button
+              label="Center"
+              icon="pi pi-crosshairs"
+              (onClick)="centerModel()"
+              severity="secondary"
+              size="small"
+              styleClass="w-full" />
+
+            <p-button
+              label="Focus"
+              icon="pi pi-eye"
+              (onClick)="focusOnNozzle()"
+              severity="secondary"
+              size="small"
+              styleClass="w-full" />
+          </div>
+        </div>
+      </p-tabPanel>
+
+      <p-tabPanel header="Info" leftIcon="pi pi-info">
+        <div class="space-y-3 text-sm">
+          <div *ngIf="isJumping()" class="bg-blue-100 border border-blue-300 rounded p-3">
+            <div class="flex items-center gap-2 text-blue-800 font-semibold mb-2">
+              <i class="pi pi-spin pi-spinner"></i>
+              Jumping to Command {{ jumpTargetValue() }}
+            </div>
+            <p-progressBar [value]="jumpProgress()" [showValue]="true"
+                           class="h-2" styleClass="custom-progress" />
+            <div class="text-xs text-blue-600 mt-1">Buffer loading... {{ jumpProgress().toFixed(1) }}%</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <span class="font-medium">Layer Progress:</span>
+            <span class="text-green-600 font-bold">{{ printerState().printProgress.toFixed(1) }}%</span>
+            <span class="font-medium">Position X:</span><span>{{ printerState().position.x.toFixed(2) }}mm</span>
+            <span class="font-medium">Position Y:</span><span>{{ printerState().position.y.toFixed(2) }}mm</span>
+            <span class="font-medium">Position Z:</span><span>{{ printerState().position.z.toFixed(2) }}mm</span>
+            <span class="font-medium">Temperature:</span><span>{{ printerState().temperature }}°C</span>
+            <span class="font-medium">Commands:</span><span>{{ printerState().currentCommandIndex }}</span>
+            <span class="font-medium">Auto-Center:</span>
+            <span [class.text-green-600]="autoCenterModel()" [class.text-red-600]="!autoCenterModel()">
+              {{ autoCenterModel() ? 'ON' : 'OFF' }}
+            </span>
+          </div>
+        </div>
+      </p-tabPanel>
+    </p-tabView>
   </p-sidebar>
 
   <!-- Command History Dialog -->
-  <p-dialog
-    [(visible)]="showCommandDialog"
-    header="Command Execution History"
-    [modal]="true"
-    [responsive]="true"
-    [style]="{ width: '90vw', maxWidth: '1200px' }"
-    [maximizable]="true"
-    styleClass="modern-dialog"
-  >
+  <p-dialog [(visible)]="showCommandDialog" header="Command Execution History" [modal]="true" [responsive]="true"
+            [style]="{ width: '90vw', maxWidth: '1200px' }" [maximizable]="true" styleClass="modern-dialog">
     <div class="mb-4 flex flex-wrap gap-2 items-center">
-      <p-button
-        label="Export CSV"
-        icon="pi pi-download"
-        (onClick)="exportCommandHistory()"
-        severity="secondary"
-        size="small"
-      />
-      <div class="ml-auto text-sm text-gray-600">
-        Total Commands: {{ commandHistory().length }}
-      </div>
+      <p-button label="Export CSV" icon="pi pi-download" (onClick)="exportCommandHistory()"
+                severity="secondary" size="small" />
+      <p-button label="Export Performance" icon="pi pi-download" (onClick)="exportPerformanceStats()"
+                severity="secondary" size="small" />
+      <div class="ml-auto text-sm text-gray-600">Total Commands: {{ commandHistory().length }}</div>
     </div>
 
-    <p-table
-      [value]="commandHistory()"
-      [paginator]="true"
-      [rows]="20"
-      [showCurrentPageReport]="true"
-      currentPageReportTemplate="Showing {first} to {last} of {totalRecords} commands"
-      [rowsPerPageOptions]="[10, 20, 50, 100]"
-      [scrollable]="true"
-      scrollHeight="400px"
-      styleClass="modern-table"
-      [globalFilterFields]="['command.command', 'command.rawLine']"
-    >
+    <p-table [value]="commandHistory()" [paginator]="true" [rows]="20" [showCurrentPageReport]="true"
+             currentPageReportTemplate="Showing {first} to {last} of {totalRecords} commands"
+             [rowsPerPageOptions]="[10, 20, 50, 100]" [scrollable]="true" scrollHeight="400px"
+             styleClass="modern-table" [globalFilterFields]="['command.command', 'command.rawLine']">
+
       <ng-template pTemplate="caption">
         <div class="flex justify-between items-center">
           <span class="text-lg font-semibold">Command History</span>
           <span class="p-input-icon-left">
             <i class="pi pi-search"></i>
-            <input
-              pInputText
-              type="text"
-              (input)="filterCommandHistory($event)"
-              placeholder="Search commands..."
-              class="p-inputtext-sm"
-            />
+            <input pInputText type="text" (input)="filterCommandHistory($event)"
+                   placeholder="Search commands..." class="p-inputtext-sm" />
           </span>
         </div>
       </ng-template>
 
       <ng-template pTemplate="header">
         <tr>
-          <th pSortableColumn="index" style="width: 80px">
-            Index
+          <th pSortableColumn="index" style="width: 80px">Index
             <p-sortIcon field="index" />
           </th>
-          <th pSortableColumn="command.command" style="width: 100px">
-            Command
+          <th pSortableColumn="command.command" style="width: 100px">Command
             <p-sortIcon field="command.command" />
           </th>
-          <th pSortableColumn="command.rawLine">
-            Raw Line
+          <th pSortableColumn="command.rawLine">Raw Line
             <p-sortIcon field="command.rawLine" />
           </th>
-          <th pSortableColumn="executionTime" style="width: 120px">
-            Exec Time
+          <th pSortableColumn="executionTime" style="width: 120px">Exec Time
             <p-sortIcon field="executionTime" />
           </th>
-          <th pSortableColumn="cumulativeTime" style="width: 120px">
-            Total Time
+          <th pSortableColumn="cumulativeTime" style="width: 120px">Total Time
             <p-sortIcon field="cumulativeTime" />
           </th>
         </tr>
       </ng-template>
 
       <ng-template pTemplate="body" let-item>
-        <tr
-          [class.bg-blue-50]="item.index === printerState().currentCommandIndex"
-          [class.font-semibold]="
-            item.index === printerState().currentCommandIndex
-          "
-        >
+        <tr [class.bg-blue-50]="item.index === printerState().currentCommandIndex"
+            [class.font-semibold]="item.index === printerState().currentCommandIndex">
           <td>{{ item.index + 1 }}</td>
           <td>
-            <p-tag
-              [value]="item.command.command"
-              [severity]="getCommandSeverity(item.command.command)"
-            />
+            <p-tag [value]="item.command.command" [severity]="getCommandSeverity(item.command.command)" />
           </td>
           <td class="font-mono text-sm">{{ item.command.rawLine }}</td>
           <td>{{ item.executionTime.toFixed(3) }}s</td>
@@ -914,49 +643,13 @@
     </p-table>
   </p-dialog>
 
-  <!-- File Upload and Configuration - Mobile -->
-  <div class="lg:hidden p-4">
-    <!-- File Upload -->
+  <!-- File Upload - Mobile -->
+  <div *ngIf="isMobile()" class="p-4">
     <div class="mb-4">
-      <label for="gcodeFile" class="block text-sm font-medium text-gray-700">Carica file G-code</label>
-      <input
-        #fileInput
-        id="gcodeFile"
-        type="file"
-        accept=".gcode"
-        class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-        (change)="onFileSelected($event)"
-      />
-    </div>
-
-    <!-- Buffer Size Configuration -->
-    <div class="mb-4">
-      <label for="bufferSize" class="block text-sm font-medium text-gray-700">Dimensione del buffer</label>
-      <p-inputNumber
-        id="bufferSize"
-        [(ngModel)]="bufferSize"
-        [min]="10"
-        [max]="1000"
-        [step]="10"
-        (onInput)="updateBufferSize(bufferSize)"
-        suffix=" comandi"
-        class="w-full mt-1"
-      ></p-inputNumber>
-    </div>
-
-    <!-- Animation Speed Configuration -->
-    <div class="mb-4">
-      <label for="animationSpeed" class="block text-sm font-medium text-gray-700">Velocità di animazione</label>
-      <p-slider
-        id="animationSpeed"
-        [(ngModel)]="animationSpeedValue"
-        [min]="0.1"
-        [max]="1000"
-        [step]="0.1"
-        (onChange)="updateAnimationSpeed(animationSpeedValue)"
-        class="w-full mt-1"
-      ></p-slider>
-      <div class="text-sm text-gray-500 mt-1">Velocità attuale: {{ animationSpeedValue() }}x</div>
+      <label for="gcodeFile" class="block text-sm font-medium text-gray-700">Upload G-code File</label>
+      <input #fileInput id="gcodeFile" type="file" accept=".gcode" class="mt-1 block w-full text-sm text-gray-500
+             file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold
+             file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" (change)="onFileSelected($event)" />
     </div>
   </div>
 </div>

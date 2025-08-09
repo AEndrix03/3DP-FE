@@ -11,7 +11,7 @@
     />
   </printer-page-title>
 
-  <printer-materials-filter />
+  <printer-materials-filter (filtersChanged)="onFiltersChanged($event)" />
 
   <printer-materials-grid
     [items]="items"

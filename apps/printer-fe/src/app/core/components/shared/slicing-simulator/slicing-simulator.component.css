@@ -1,0 +1,310 @@
+/* Base simulator container */
+.simulator-container {
+    min-height: 100vh;
+}
+
+/* Canvas and viewport styles */
+.canvas-container canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Glass effect panels */
+.glass-panel {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+/* Loading and Progress Animations */
+@keyframes pulse-glow {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Fan Animation Styles - VERSIONE SEMPLIFICATA E FUNZIONANTE */
+.fan-icon {
+    transition: filter 0.3s ease;
+    filter: drop-shadow(0 0 4px rgba(0, 255, 0, 0.3));
+    transform-origin: center;
+}
+
+.fan-icon:hover {
+    filter: drop-shadow(0 0 8px rgba(0, 255, 0, 0.5));
+}
+
+/* Animazione principale della fan - SEMPRE ATTIVA quando ha la classe */
+.fan-spinning {
+    animation: fanSpin 1s linear infinite !important;
+}
+
+/* Velocità diverse per la fan */
+.fan-speed-low {
+    animation-duration: 2s !important;
+}
+
+.fan-speed-medium {
+    animation-duration: 1s !important;
+}
+
+.fan-speed-high {
+    animation-duration: 0.5s !important;
+}
+
+.fan-ring {
+    transition: all 0.3s ease;
+    transform-origin: center;
+}
+
+/* Fan ring spinning animation */
+.fan-ring-spinning {
+    animation: fanSpin 1s linear infinite !important;
+}
+
+.fan-ring-spinning.fan-speed-low {
+    animation-duration: 2s !important;
+}
+
+.fan-ring-spinning.fan-speed-medium {
+    animation-duration: 1s !important;
+}
+
+.fan-ring-spinning.fan-speed-high {
+    animation-duration: 0.5s !important;
+}
+
+/* Keyframe per la rotazione della fan */
+@keyframes fanSpin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Effetti visivi per velocità diverse */
+.fan-speed-low .fan-icon {
+    filter: drop-shadow(0 0 4px rgba(234, 179, 8, 0.4));
+}
+
+.fan-speed-medium .fan-icon {
+    filter: drop-shadow(0 0 4px rgba(249, 115, 22, 0.4));
+}
+
+.fan-speed-high .fan-icon {
+    filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.5));
+}
+
+/* Enhanced ring visual effects based on speed */
+.fan-ring.border-green-400 {
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+}
+
+.fan-ring-spinning.border-green-400 {
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
+}
+
+/* Fan Speed Visual Indicators */
+.fan-speed-low {
+    color: #fbbf24;
+}
+
+.fan-speed-medium {
+    color: #fb923c;
+}
+
+.fan-speed-high {
+    color: #34d399;
+}
+
+/* Fan Status Indicator */
+.fan-status-indicator {
+    transition: all 0.3s;
+}
+
+/* Mobile fan icon smaller animations */
+@media (max-width: 768px) {
+    .fan-icon {
+        filter: drop-shadow(0 0 2px rgba(0, 255, 0, 0.3));
+    }
+
+    .fan-speed-high .fan-icon {
+        filter: drop-shadow(0 0 3px rgba(34, 197, 94, 0.4));
+    }
+}
+
+/* Control Panel Scrollbar for Desktop */
+.control-panel {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(156 163 175) rgb(243 244 246);
+}
+
+.control-panel::-webkit-scrollbar {
+    width: 0.5rem;
+}
+
+.control-panel::-webkit-scrollbar-track {
+    background-color: #f3f4f6;
+    border-radius: 9999px;
+}
+
+.control-panel::-webkit-scrollbar-thumb {
+    background-color: #9ca3af;
+    border-radius: 9999px;
+    transition: colors 0.2s;
+}
+
+.control-panel::-webkit-scrollbar-thumb:hover {
+    background-color: #6b7280;
+}
+
+/* File Input Customizations */
+input[type="file"] {
+    color: #6b7280;
+}
+
+input[type="file"]::file-selector-button {
+    margin-right: 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    border: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    cursor: pointer;
+    transition: colors 0.2s;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background-color: #bfdbfe;
+}
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 1024px) {
+    .control-panel {
+        display: none;
+    }
+
+    .canvas-container {
+        height: 50%;
+    }
+
+    .glass-panel {
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+    }
+}
+
+@media (max-width: 768px) {
+    .glass-panel {
+        padding: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    :host ::ng-deep .modern-table .p-datatable {
+        font-size: 0.875rem;
+    }
+
+    :host ::ng-deep .mobile-tabs .p-tabview-nav-link {
+        font-size: 0.75rem;
+        padding: 0.5rem;
+    }
+}
+
+/* High Performance Mode - Reduced Effects for Mobile */
+@media (max-width: 768px) and (max-resolution: 150dpi) {
+    .glass-panel {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background-color: rgba(0, 0, 0, 0.8);
+    }
+
+    :host ::ng-deep .modern-panel .p-panel-content {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background-color: white;
+    }
+
+    :host ::ng-deep .modern-button {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    :host ::ng-deep .modern-button:hover {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        transform: none;
+    }
+}
+
+/* Focus Styles for Accessibility */
+:host ::ng-deep .p-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+
+:host ::ng-deep .p-inputnumber-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+
+:host ::ng-deep .p-slider:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+
+/* Performance Optimization Classes */
+.gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+.disable-transitions {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Reduced Motion Support - MA MANTIENI LA FAN */
+@media (prefers-reduced-motion: reduce) {
+    /* Disabilita tutte le animazioni TRANNE la fan */
+    *:not(.fan-spinning):not(.fan-ring-spinning) {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .glass-panel {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background-color: rgba(0, 0, 0, 0.9);
+    }
+
+    /* La fan continua a girare anche con reduced motion */
+    .fan-spinning,
+    .fan-ring-spinning {
+        animation: fanSpin linear infinite !important;
+    }
+
+    .fan-spinning.fan-speed-low,
+    .fan-ring-spinning.fan-speed-low {
+        animation-duration: 2s !important;
+    }
+
+    .fan-spinning.fan-speed-medium,
+    .fan-ring-spinning.fan-speed-medium {
+        animation-duration: 1s !important;
+    }
+
+    .fan-spinning.fan-speed-high,
+    .fan-ring-spinning.fan-speed-high {
+        animation-duration: 0.5s !important;
+    }
+}

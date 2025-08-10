@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { animate, style, transition, trigger } from '@angular/animations';
 
-// PrimeNG imports - optimized
+// PrimeNG imports
 import { ButtonModule } from 'primeng/button';
 import { SliderModule } from 'primeng/slider';
 import { ProgressBarModule } from 'primeng/progressbar';
@@ -33,12 +33,13 @@ import { SidebarModule } from 'primeng/sidebar';
 import { SpeedDialModule } from 'primeng/speeddial';
 import { PanelModule } from 'primeng/panel';
 import { AccordionModule } from 'primeng/accordion';
+import { InputTextModule } from 'primeng/inputtext';
 
 import {
   GCodeCommand,
-  GCodeSimulatorService,
   SimulationState,
-} from './slicing-simulator.service';
+} from '../../../types/gcode/gcode.types';
+import { GCodeSimulatorService } from '../../../services/gcode';
 
 interface CommandExecutionInfo {
   index: number;
@@ -68,83 +69,11 @@ interface CommandExecutionInfo {
     SpeedDialModule,
     PanelModule,
     AccordionModule,
+    InputTextModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './slicing-simulator.component.html',
-  styles: [
-    `
-      .simulator-container {
-        @apply min-h-screen;
-      }
-
-      .canvas-container canvas {
-        @apply w-full h-full block;
-      }
-
-      .glass-panel {
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-      }
-
-      :host ::ng-deep .modern-panel .p-panel-header {
-        @apply bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-t-lg;
-      }
-
-      :host ::ng-deep .modern-panel .p-panel-content {
-        @apply bg-white/90 backdrop-blur-sm;
-      }
-
-      :host ::ng-deep .modern-accordion .p-accordion-header {
-        @apply bg-gradient-to-r from-gray-100 to-gray-200;
-      }
-
-      :host ::ng-deep .modern-accordion .p-accordion-content {
-        @apply bg-white/95;
-      }
-
-      :host ::ng-deep .custom-progress .p-progressbar-value {
-        @apply bg-gradient-to-r from-blue-500 to-blue-600;
-      }
-
-      :host ::ng-deep .custom-progress-green .p-progressbar-value {
-        @apply bg-gradient-to-r from-green-500 to-green-600;
-      }
-
-      :host ::ng-deep .modern-slider .p-slider-range {
-        @apply bg-gradient-to-r from-blue-500 to-blue-600;
-      }
-
-      :host ::ng-deep .modern-button {
-        @apply shadow-lg hover:shadow-xl transition-all duration-300;
-      }
-
-      :host ::ng-deep .modern-input .p-inputnumber-input {
-        @apply border-2 border-gray-200 focus:border-blue-500 rounded-lg;
-      }
-
-      :host ::ng-deep .modern-toggle.p-togglebutton {
-        @apply border-2 border-gray-200 rounded-lg transition-all duration-300;
-      }
-
-      :host ::ng-deep .modern-dialog .p-dialog-header {
-        @apply bg-gradient-to-r from-blue-500 to-blue-600 text-white;
-      }
-
-      :host ::ng-deep .modern-table .p-datatable-thead > tr > th {
-        @apply bg-gradient-to-r from-gray-100 to-gray-200 border-b-2 border-gray-300;
-      }
-
-      :host ::ng-deep .mobile-tabs .p-tabview-nav {
-        @apply justify-center;
-      }
-
-      @media (max-width: 768px) {
-        .control-panel {
-          @apply hidden;
-        }
-      }
-    `,
-  ],
+  styleUrl: './slicing-simulator.component.css',
   animations: [
     trigger('slideIn', [
       transition(':enter', [
@@ -168,7 +97,7 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   canvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('fileInput') fileInput!: ElementRef;
 
-  // Inputs - streamlined
+  // Inputs
   readonly commands = input<string[]>([]);
   readonly gcodeBlobInput = input<Blob>();
   readonly animationSpeedInput = input<number>(1.0);
@@ -176,7 +105,7 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   readonly layerHeightInput = input<number>(0.2);
   readonly autoStart = input<boolean>(false);
 
-  // Outputs - essential only
+  // Outputs
   readonly stateChange = output<any>();
   readonly simulationComplete = output<void>();
   readonly simulationError = output<string>();
@@ -188,12 +117,12 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   private animationId!: number;
   private resizeObserver!: ResizeObserver;
 
-  // UI State - minimized
+  // UI State
   readonly sidebarVisible = signal(false);
   readonly showCommandDialog = signal(false);
   readonly isMobile = signal(false);
 
-  // Control values - streamlined
+  // Control values
   readonly animationSpeedValue = signal(1.0);
   readonly filamentColorValue = signal('#FF4444');
   readonly layerHeightValue = signal(0.2);
@@ -204,36 +133,48 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   readonly showBuildPlate = signal(true);
   readonly jumpTarget = signal(0);
 
-  // Advanced settings - consolidated
+  // Advanced settings
   readonly showBezierControls = signal(false);
   readonly maxPathPoints = signal(50000);
   readonly batchUpdateSize = signal(100);
   readonly curveResolution = signal(20);
   readonly bufferSize = signal(1000);
 
-  // Centraggio automatico
+  // Model positioning
   readonly autoCenterModel = signal(true);
-  readonly modelBounds = signal<any>(null);
 
-  // Performance tracking - optimized
+  // Performance tracking
   private performanceMetrics = {
     fps: 0,
     frameCount: 0,
     lastFrameTime: 0,
   };
 
-  // Performance monitoring interval
   private performanceMonitorInterval: any;
 
-  // Command history - simplified
+  // Command history
   private readonly _commandHistory = signal<CommandExecutionInfo[]>([]);
   readonly commandHistory = this._commandHistory.asReadonly();
 
-  // Computed signals - essential only
+  // Computed signals from simulator service
   readonly simulationState = computed(() =>
     this.simulatorService.simulationState()
   );
-  readonly printerState = computed(() => this.simulatorService.fullState());
+
+  // Get layers directly from simulator service signals (not through fullState)
+  readonly currentLayer;
+  readonly totalLayers;
+
+  readonly printerState = computed(() => {
+    const state = this.simulatorService.fullState();
+    // Use the direct layer signals to ensure reactivity
+    return {
+      ...state,
+      currentLayer: this.currentLayer(),
+      totalLayers: this.totalLayers(),
+      totalCommands: 0, // Nascosto per evitare confusione
+    };
+  });
   readonly errorMessage = computed(() => this.simulatorService.errorMessage());
   readonly loadingProgress = computed(() =>
     this.simulatorService.loadingProgress()
@@ -244,7 +185,7 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     this.simulatorService.getCommandProgress()
   );
 
-  // Control states - streamlined
+  // Control states
   readonly canStart = computed(
     () =>
       (this.simulationState() === SimulationState.IDLE ||
@@ -267,13 +208,12 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     () =>
       this.simulationState() !== SimulationState.RUNNING && !this.isJumping()
   );
-
   readonly canStep = computed(
     () =>
       this.simulationState() !== SimulationState.RUNNING && !this.isJumping()
   );
 
-  // Speed dial items - cached
+  // Speed dial items
   readonly speedDialItems = computed(() => [
     {
       icon: 'pi pi-play',
@@ -295,7 +235,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
       command: () => this.canReset() && this.reset(),
       disabled: !this.canReset(),
     },
-    // NUOVO: Pulsante per centrare modello
     {
       icon: 'pi pi-crosshairs',
       command: () => this.centerModel(),
@@ -306,9 +245,13 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   readonly jumpTargetValue = computed(() => this.simulatorService.jumpTarget());
 
   protected readonly Math = Math;
+  protected readonly SimulationState = SimulationState;
 
   constructor(private simulatorService: GCodeSimulatorService) {
     console.log('🚀 Initializing SlicingSimulatorComponent...');
+
+    this.currentLayer = this.simulatorService.currentLayerSignal;
+    this.totalLayers = this.simulatorService.totalLayersSignal;
 
     this.setupOptimizedEffects();
     this.checkMobileOptimized();
@@ -321,18 +264,20 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   ngOnInit() {
     console.log('🔄 SlicingSimulatorComponent ngOnInit starting...');
 
-    // IMPORTANTE: Hard reset del servizio all'init del componente
-    // Questo risolve il problema del mantenimento dello stato al cambio pagina
-    console.log('🧹 Performing hard reset of simulator service...');
-    this.simulatorService.hardReset();
-
+    // Prima inizializza Three.js
     this.initializeThreeJS();
     this.setupResizeHandler();
 
-    // Piccolo delay per assicurarsi che Three.js sia completamente inizializzato
+    // POI fai il hard reset per pulire tutto correttamente
     setTimeout(() => {
-      this.resetCameraOptimized();
-    }, 100);
+      console.log('🧹 Performing post-initialization cleanup...');
+      this.simulatorService.hardReset();
+
+      // Reset della camera dopo la pulizia
+      setTimeout(() => {
+        this.resetCameraOptimized();
+      }, 100);
+    }, 50);
 
     console.log('✅ SlicingSimulatorComponent initialized successfully');
   }
@@ -340,15 +285,18 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     console.log('🗑️ Destroying SlicingSimulatorComponent...');
 
-    // Ferma tutto prima della distruzione
+    // Prima ferma la simulazione
     this.simulatorService.forceStop();
 
-    // Clear performance monitoring
     if (this.performanceMonitorInterval) {
       clearInterval(this.performanceMonitorInterval);
     }
 
+    // Pulizia finale più robusta
     this.cleanup();
+
+    // Hard reset finale per assicurarsi che tutto sia pulito
+    this.simulatorService.hardReset();
 
     console.log('✅ SlicingSimulatorComponent destroyed');
   }
@@ -360,31 +308,33 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   }
 
   private setupOptimizedEffects() {
-    // Streamlined input sync
     effect(() => {
       this.animationSpeedValue.set(this.animationSpeedInput());
       this.filamentColorValue.set(this.filamentColorInput());
       this.layerHeightValue.set(this.layerHeightInput());
     });
 
-    // Effect per sincronizzare build volume con service
     effect(() => {
       const x = this.buildVolumeX();
       const y = this.buildVolumeY();
       const z = this.buildVolumeZ();
-
       this.simulatorService.setBuildVolume(x, y, z);
     });
 
-    // Sync filament color with service
     effect(() => {
-      const color = this.filamentColorInput();
+      const color = this.filamentColorValue();
       if (color) {
         this.simulatorService.setFilamentColor(color);
       }
     });
 
-    // Blob processing
+    // Debug effect to monitor layer changes
+    effect(() => {
+      const current = this.currentLayer();
+      const total = this.totalLayers();
+      console.log(`🏗️ Layer State: ${current}/${total}`);
+    });
+
     effect(() => {
       const blob = this.gcodeBlobInput();
       if (blob) {
@@ -393,25 +343,18 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
             2
           )} MB`
         );
-        // Reset prima di caricare un nuovo file
         this.simulatorService.hardReset();
-
-        // Piccolo delay per permettere al reset di completarsi
         setTimeout(() => {
           this.simulatorService.loadGCodeBlob(blob);
         }, 100);
       }
     });
 
-    // Commands processing - optimized
     effect(() => {
       const commands = this.commands();
       if (commands.length > 0) {
         console.log(`📝 Loading ${commands.length} G-code commands`);
-
-        // Reset prima di caricare nuovi comandi
         this.simulatorService.hardReset();
-
         setTimeout(() => {
           this.simulatorService.loadCommands(commands);
           this._commandHistory.set([]);
@@ -423,7 +366,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Essential output emissions only
     effect(() => {
       const state = this.printerState();
       this.stateChange.emit(state);
@@ -440,7 +382,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Optimized command history tracking
     effect(() => {
       const currentIndex = this.printerState().currentCommandIndex;
       const command = this.simulatorService.getCurrentCommand();
@@ -479,11 +420,7 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     requestAnimationFrame(trackFPS);
   }
 
-  /**
-   * Monitoraggio performance migliorato
-   */
   private setupPerformanceMonitoring(): void {
-    // Log info memoria ogni 30 secondi durante simulazione
     this.performanceMonitorInterval = setInterval(() => {
       if (this.simulationState() === 'running') {
         const memInfo = this.getMemoryInfo();
@@ -494,20 +431,19 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
           pathPoints: memInfo.pathPoints,
         });
       }
-    }, 30000); // Ogni 30 secondi
+    }, 30000);
   }
 
   private initializeThreeJS() {
     const canvas = this.canvasRef.nativeElement;
     const container = canvas.parentElement!;
 
-    // Fix: Enhanced renderer setup to prevent disappearing objects
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: !this.isMobile(),
       alpha: true,
       powerPreference: 'high-performance',
-      logarithmicDepthBuffer: true, // Fix depth precision issues
+      logarithmicDepthBuffer: true,
     });
 
     this.renderer.setSize(container.clientWidth, container.clientHeight);
@@ -515,43 +451,34 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
       Math.min(window.devicePixelRatio, this.isMobile() ? 1 : 2)
     );
     this.renderer.setClearColor(0x1a1a1a, 1);
-
-    // Fix: Better sorting and rendering settings
     this.renderer.sortObjects = true;
     this.renderer.autoClear = true;
 
-    // Conditional shadow mapping for performance
     if (!this.isMobile()) {
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     }
 
-    // Fix: Improved camera with better clipping planes
     this.camera = new THREE.PerspectiveCamera(
       this.isMobile() ? 85 : 75,
       container.clientWidth / container.clientHeight,
-      0.5, // Near plane - prevent z-fighting
-      10000 // Far plane - prevent far clipping
+      0.5,
+      10000
     );
 
-    // Fix: Enhanced controls with better settings
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
-    this.controls.minDistance = 5; // Allow very close zoom
-    this.controls.maxDistance = 3000; // Allow very far zoom
+    this.controls.minDistance = 5;
+    this.controls.maxDistance = 3000;
     this.controls.maxPolarAngle = Math.PI;
     this.controls.minPolarAngle = 0;
     this.controls.enableZoom = true;
     this.controls.enableRotate = true;
     this.controls.enablePan = true;
-
-    // Smooth controls
     this.controls.zoomSpeed = 1.0;
     this.controls.rotateSpeed = 1.0;
     this.controls.panSpeed = 1.0;
-
-    // Set target to center of build volume
     this.controls.target.set(100, 10, 100);
 
     this.setupLighting();
@@ -561,7 +488,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   private setupLighting() {
     const scene = this.simulatorService.getScene();
 
-    // Optimized lighting - fewer lights for mobile
     const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
     scene.add(ambientLight);
 
@@ -576,7 +502,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
 
     scene.add(directionalLight);
 
-    // Add hemisphere light for better overall illumination
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
     scene.add(hemiLight);
   }
@@ -599,24 +524,19 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     const maxDimension = Math.max(buildVolume.x, buildVolume.y, buildVolume.z);
     const cameraDistance = maxDimension * 1.8;
 
-    // NUOVO: Usa il centro del volume di build
     const center = {
       x: buildVolume.x / 2,
       y: buildVolume.y / 2,
       z: 0,
     };
 
-    // Position camera at optimal isometric angle
     this.camera.position.set(
       center.x + cameraDistance * 0.7,
       cameraDistance * 1.2,
       center.y + cameraDistance * 0.7
     );
 
-    // Target center of build volume at ground level
     this.controls.target.set(center.x, 0, center.y);
-
-    // Force immediate update
     this.controls.update();
 
     setTimeout(() => {
@@ -653,32 +573,24 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   private cleanup() {
     console.log('🧹 Cleaning up component resources...');
 
-    // Cancella animazione frame se presente
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
     }
 
-    // Disconnetti resize observer
     this.resizeObserver?.disconnect();
 
-    // Dispose delle risorse Three.js
     if (this.controls) {
       this.controls.dispose();
     }
 
     if (this.renderer) {
-      // Pulisci il renderer
       this.renderer.dispose();
       this.renderer.forceContextLoss();
     }
 
-    // Non chiamare dispose del service qui perché è un singleton
-    // e potrebbe essere usato da altre istanze del componente
-
     console.log('✅ Component cleanup completed');
   }
 
-  // Streamlined control methods
   start() {
     console.log('▶️ Component: Starting simulation');
     this.simulatorService.start();
@@ -698,8 +610,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     console.log('🔄 Component: Resetting simulation');
     this.simulatorService.reset();
     this._commandHistory.set([]);
-
-    // Piccolo delay per permettere al reset di completarsi
     setTimeout(() => {
       this.resetCameraOptimized();
     }, 100);
@@ -719,49 +629,31 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
 
   jumpToCommand() {
     const target = this.jumpTarget();
-    const totalCommands = this.printerState().totalCommands;
 
     if (target < 0) {
       console.warn('Invalid jump target: negative value');
       return;
     }
 
-    if (
-      target >= totalCommands &&
-      this.simulatorService['streamingBuffer'].processedLines <= totalCommands
-    ) {
-      console.warn(
-        `Jump target ${target} exceeds total commands ${totalCommands}`
-      );
-      return;
-    }
+    console.log(`🎯 Requesting jump to command ${target}`);
 
-    console.log(
-      `🎯 Requesting jump to command ${target} (total: ${totalCommands})`
-    );
-
-    // Mostra feedback immediato
     const wasRunning = this.simulationState() === 'running';
     if (wasRunning) {
-      this.pause(); // Pausa durante il jump
+      this.pause();
     }
 
     this.simulatorService
       .jumpToCommand(target)
       .then(() => {
         console.log(`✅ Jump to command ${target} completed successfully`);
-
-        // Riprendi se era in esecuzione
         if (wasRunning) {
           setTimeout(() => {
             this.start();
-          }, 500); // Piccolo delay per stabilità
+          }, 500);
         }
       })
-      .catch((error) => {
+      .catch((error: any) => {
         console.error(`❌ Jump to command ${target} failed:`, error);
-
-        // Riprendi comunque se era in esecuzione
         if (wasRunning) {
           setTimeout(() => {
             this.start();
@@ -770,7 +662,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
       });
   }
 
-  // Optimized settings updates
   updateAnimationSpeed(event: any) {
     const speed = typeof event === 'number' ? event : event.value;
     this.animationSpeedValue.set(speed);
@@ -795,7 +686,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     console.log(`📐 Build volume updated: ${x} x ${y} x ${z}`);
     this.simulatorService.setBuildVolume(x, y, z);
 
-    // Aggiorna anche la camera per adattarsi al nuovo volume
     setTimeout(() => {
       this.resetCameraOptimized();
     }, 100);
@@ -838,36 +728,23 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     this.simulatorService.setBufferSize(value);
   }
 
-  /**
-   * Abilita/disabilita centraggio automatico
-   */
   updateAutoCenterModel(event: any) {
     const enabled = event.checked;
     this.autoCenterModel.set(enabled);
     this.simulatorService.setAutoCenterModel(enabled);
-
     console.log(`🎯 Auto-centering ${enabled ? 'enabled' : 'disabled'}`);
   }
 
-  /**
-   * Centra manualmente il modello
-   */
   centerModel() {
     console.log('🎯 Manual model centering requested');
     this.simulatorService.setAutoCenterModel(true);
     this.autoCenterModel.set(true);
   }
 
-  /**
-   * Ottieni informazioni sui bounds del modello
-   */
   getModelBounds() {
     return this.simulatorService.getModelBounds();
   }
 
-  /**
-   * Metodo diagnostico per verificare il posizionamento
-   */
   logModelPositioning() {
     const bounds = this.simulatorService.getModelBounds();
     const printerState = this.printerState();
@@ -887,7 +764,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     return info;
   }
 
-  // Camera controls
   resetCamera() {
     this.resetCameraOptimized();
   }
@@ -896,7 +772,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     const pos = this.printerState().position;
     const bounds = this.simulatorService.getModelBounds();
 
-    // Applica offset di centraggio
     const centeredPos = {
       x: pos.x + bounds.offset.x,
       y: pos.y + bounds.offset.y,
@@ -936,7 +811,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     this.resetCameraOptimized();
   }
 
-  // File handling - optimized
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
@@ -950,17 +824,13 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
         ).toFixed(2)} MB)`
       );
 
-      // Reset prima di caricare un nuovo file
       this.simulatorService.hardReset();
-
-      // Piccolo delay per permettere al reset di completarsi
       setTimeout(() => {
         this.simulatorService.loadGCodeBlob(file);
       }, 100);
     }
   }
 
-  // Command history - streamlined
   filterCommandHistory(event: any) {
     const value = event.target.value.toLowerCase();
     const filtered = this._commandHistory().filter(
@@ -968,7 +838,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
         item.command.command.toLowerCase().includes(value) ||
         item.command.rawLine.toLowerCase().includes(value)
     );
-    // Could implement actual table filtering here
     console.log('🔍 Filtered commands:', filtered.length);
   }
 
@@ -998,9 +867,14 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   }
 
   exportPerformanceStats() {
+    const loadedCommands = this.simulatorService.totalCommands();
+
     const stats = {
       timestamp: new Date().toISOString(),
-      totalCommands: this.printerState().totalCommands,
+      loadedCommands: loadedCommands, // Solo comandi caricati
+      currentCommand: this.printerState().currentCommandIndex,
+      currentLayer: this.printerState().currentLayer,
+      totalLayers: this.printerState().totalLayers,
       pathObjects: this.getTotalPathObjects(),
       currentFPS: this.getCurrentFPS(),
       animationSpeed: this.animationSpeedValue(),
@@ -1023,7 +897,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     console.log('📊 Performance stats exported successfully');
   }
 
-  // Utility methods - streamlined
   getStateSeverity(
     state: SimulationState
   ): 'success' | 'info' | 'warning' | 'danger' | 'secondary' {
@@ -1055,7 +928,57 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     return `${minutes}m ${remainingSeconds.toFixed(0)}s`;
   }
 
-  // Metodi di utilità per debug e monitoraggio
+  /**
+   * Calculate fan animation duration based on speed
+   * Higher speed = faster rotation (lower duration)
+   */
+  getFanAnimationDuration(): number {
+    const fanSpeed = this.printerState().fanSpeed;
+
+    if (fanSpeed === 0) return 0; // No animation when off
+
+    // Map fan speed (0-100%) to animation duration (2s to 0.2s)
+    // Higher speed = faster rotation = lower duration
+    const minDuration = 0.2; // Fastest rotation (100% speed)
+    const maxDuration = 2.0; // Slowest rotation (1% speed)
+
+    // Inverse relationship: higher speed = lower duration
+    const duration =
+      maxDuration - (fanSpeed / 100) * (maxDuration - minDuration);
+
+    return Math.max(minDuration, duration);
+  }
+
+  /**
+   * Get fan speed category for styling
+   */
+  getFanSpeedCategory(): 'low' | 'medium' | 'high' | 'off' {
+    const fanSpeed = this.printerState().fanSpeed;
+
+    if (fanSpeed === 0) return 'off';
+    if (fanSpeed <= 30) return 'low';
+    if (fanSpeed <= 70) return 'medium';
+    return 'high';
+  }
+
+  /**
+   * Get fan status color based on speed
+   */
+  getFanStatusColor(): string {
+    const category = this.getFanSpeedCategory();
+
+    switch (category) {
+      case 'low':
+        return 'text-yellow-400';
+      case 'medium':
+        return 'text-orange-400';
+      case 'high':
+        return 'text-green-400';
+      default:
+        return 'text-gray-500';
+    }
+  }
+
   getMemoryInfo() {
     const memoryUsage = this.simulatorService.getMemoryUsage();
     const diagnostic = this.getDiagnosticInfo();
@@ -1064,22 +987,24 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
       ...diagnostic,
       memory: memoryUsage,
       pathPoints: {
-        extrusion: this.simulatorService['batchedExtrusionPath'].points.length,
-        travel: this.simulatorService['batchedTravelPath'].points.length,
+        extrusion: this.simulatorService.pathSegments().length,
+        travel: 0,
       },
     };
   }
 
-  // Diagnostic info for debugging
   getDiagnosticInfo() {
     const bounds = this.simulatorService.getModelBounds();
+    const loadedCommands = this.simulatorService.totalCommands();
 
     return {
       simulation: {
         state: this.simulationState(),
         progress: this.printerState().printProgress,
         currentCommand: this.printerState().currentCommandIndex,
-        totalCommands: this.printerState().totalCommands,
+        loadedCommands: loadedCommands, // Solo comandi caricati nel buffer
+        currentLayer: this.printerState().currentLayer,
+        totalLayers: this.printerState().totalLayers,
       },
       performance: {
         fps: this.getCurrentFPS(),
@@ -1092,7 +1017,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
         curveResolution: this.curveResolution(),
         showBezierControls: this.showBezierControls(),
       },
-      // NUOVO: Informazioni centraggio
       positioning: {
         autoCentering: this.autoCenterModel(),
         modelBounds: bounds.bounds,
@@ -1103,13 +1027,17 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
   }
 
   logCurrentState() {
+    const loadedCommands = this.simulatorService.totalCommands();
+
     const state = {
       simulation: this.simulationState(),
       commands: {
         current: this.printerState().currentCommandIndex,
-        total: this.printerState().totalCommands,
-        loaded: this.simulatorService['_commands']().length,
-        processed: this.simulatorService['streamingBuffer'].processedLines,
+        loaded: loadedCommands, // Solo comandi nel buffer corrente
+      },
+      layers: {
+        current: this.printerState().currentLayer,
+        total: this.printerState().totalLayers,
       },
       memory: this.simulatorService.getMemoryUsage(),
       performance: {
@@ -1122,7 +1050,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     return state;
   }
 
-  // Metodo per pulire manualmente la memoria se necessario
   clearMemoryCache() {
     console.log('🧹 Manual memory cleanup requested');
 
@@ -1131,11 +1058,7 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
       this.pause();
     }
 
-    // Forza configurazione e pulizia
     this.simulatorService.configureDynamicLimits();
-
-    // Forza aggiornamento mesh
-    this.simulatorService['updateBatchedMeshes']();
 
     if (wasRunning) {
       setTimeout(() => {
@@ -1146,7 +1069,6 @@ export class SlicingSimulatorComponent implements OnInit, OnDestroy {
     console.log('✅ Memory cleanup completed');
   }
 
-  // Metodo per ottenere statistiche avanzate
   getAdvancedStats() {
     const detailedMemory = this.simulatorService.getDetailedMemoryUsage();
     const basicInfo = this.getDiagnosticInfo();

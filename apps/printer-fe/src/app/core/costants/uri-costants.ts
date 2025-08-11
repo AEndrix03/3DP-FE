@@ -5,6 +5,7 @@ export class UriCostants {
 
   public static readonly filesUrl: string = `${this.proxyUrl}/api/file`;
   public static readonly modelsUrl: string = `${this.proxyUrl}/api/model`;
+  public static readonly printerUrl: string = `${this.proxyUrl}/api/printer`;
 
   public static readonly slicingUrl: string = `${this.proxyUrl}/api/slicing`;
   public static readonly slicingPropertyUrl: string = `${this.proxyUrl}/api/slicing/property`;

@@ -1,0 +1,929 @@
+<div class="printer-detail-dialog">
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <p-progressSpinner styleClass="w-12 h-12" strokeWidth="3" />
+    <p class="loading-text">Loading printer details...</p>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="errorMessage && !loading" class="error-container">
+    <p-message severity="error" [text]="errorMessage" styleClass="w-full" />
+  </div>
+
+  <!-- Main Content -->
+  <div *ngIf="!loading" class="dialog-content">
+    <form [formGroup]="printerForm" class="printer-form">
+
+      <!-- Tab Navigation -->
+      <p-tabView (onChange)="onTabChange($event)" styleClass="modern-tabs">
+
+        <!-- General Info Tab -->
+        <p-tabPanel header="General Info">
+          <ng-template pTemplate="header">
+            <div class="tab-header">
+              <i class="pi pi-info-circle tab-icon"></i>
+              <span class="tab-label">General Info</span>
+            </div>
+          </ng-template>
+
+          <div class="tab-content">
+            <p-card styleClass="field-card">
+              <div class="field-grid">
+
+                <!-- Printer Name -->
+                <div class="field-container md:col-span-2">
+                  <label for="name" class="field-label">
+                    Printer Name
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Unique name for this printer"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <input pInputText
+                         id="name"
+                         formControlName="name"
+                         placeholder="Enter printer name"
+                         class="field-input"
+                         [class.field-error]="isFieldInvalid('name')" />
+                  <small *ngIf="isFieldInvalid('name')" class="field-error-message">
+                    {{ getFieldErrorMessage('name') }}
+                  </small>
+                </div>
+
+                <!-- Driver ID -->
+                <div class="field-container">
+                  <label for="driverId" class="field-label">
+                    Driver ID
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Firmware driver identifier"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <input pInputText
+                         id="driverId"
+                         formControlName="driverId"
+                         placeholder="e.g., marlin_2.0"
+                         class="field-input"
+                         [class.field-error]="isFieldInvalid('driverId')" />
+                  <small *ngIf="isFieldInvalid('driverId')" class="field-error-message">
+                    {{ getFieldErrorMessage('driverId') }}
+                  </small>
+                </div>
+
+                <!-- Firmware Version -->
+                <div class="field-container">
+                  <label for="firmwareVersionId" class="field-label">
+                    Firmware Version
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Current firmware version"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <input pInputText
+                         id="firmwareVersionId"
+                         formControlName="firmwareVersionId"
+                         placeholder="e.g., 2.1.2"
+                         class="field-input"
+                         [class.field-error]="isFieldInvalid('firmwareVersionId')" />
+                  <small *ngIf="isFieldInvalid('firmwareVersionId')" class="field-error-message">
+                    {{ getFieldErrorMessage('firmwareVersionId') }}
+                  </small>
+                </div>
+
+                <!-- Firmware Install Date -->
+                <div class="field-container">
+                  <label for="firmwareInstalledAt" class="field-label">
+                    Firmware Install Date
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Date when firmware was installed"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-calendar formControlName="firmwareInstalledAt"
+                              inputId="firmwareInstalledAt"
+                              dateFormat="dd/mm/yy"
+                              [showIcon]="true"
+                              placeholder="Select date"
+                              styleClass="field-input"
+                              appendTo="body"
+                              [class.field-error]="isFieldInvalid('firmwareInstalledAt')">
+                  </p-calendar>
+                  <small *ngIf="isFieldInvalid('firmwareInstalledAt')" class="field-error-message">
+                    {{ getFieldErrorMessage('firmwareInstalledAt') }}
+                  </small>
+                </div>
+
+              </div>
+            </p-card>
+          </div>
+        </p-tabPanel>
+
+        <!-- Dimensions Tab -->
+        <p-tabPanel header="Dimensions">
+          <ng-template pTemplate="header">
+            <div class="tab-header">
+              <i class="pi pi-box tab-icon"></i>
+              <span class="tab-label">Dimensions</span>
+            </div>
+          </ng-template>
+
+          <div class="tab-content">
+            <p-card styleClass="field-card">
+              <div class="field-grid">
+
+                <!-- Build Volume X -->
+                <div class="field-container">
+                  <label for="buildVolumeXMm" class="field-label">
+                    Build Volume X
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Maximum build width"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="buildVolumeXMm"
+                                 inputId="buildVolumeXMm"
+                                 [min]="1"
+                                 [max]="1000"
+                                 suffix="mm"
+                                 placeholder="220"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('buildVolumeXMm')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('buildVolumeXMm')" class="field-error-message">
+                    {{ getFieldErrorMessage('buildVolumeXMm') }}
+                  </small>
+                </div>
+
+                <!-- Build Volume Y -->
+                <div class="field-container">
+                  <label for="buildVolumeYMm" class="field-label">
+                    Build Volume Y
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Maximum build depth"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="buildVolumeYMm"
+                                 inputId="buildVolumeYMm"
+                                 [min]="1"
+                                 [max]="1000"
+                                 suffix="mm"
+                                 placeholder="220"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('buildVolumeYMm')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('buildVolumeYMm')" class="field-error-message">
+                    {{ getFieldErrorMessage('buildVolumeYMm') }}
+                  </small>
+                </div>
+
+                <!-- Build Volume Z -->
+                <div class="field-container">
+                  <label for="buildVolumeZMm" class="field-label">
+                    Build Volume Z
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Maximum build height"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="buildVolumeZMm"
+                                 inputId="buildVolumeZMm"
+                                 [min]="1"
+                                 [max]="1000"
+                                 suffix="mm"
+                                 placeholder="250"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('buildVolumeZMm')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('buildVolumeZMm')" class="field-error-message">
+                    {{ getFieldErrorMessage('buildVolumeZMm') }}
+                  </small>
+                </div>
+
+                <!-- Build Plate Material -->
+                <div class="field-container">
+                  <label for="buildPlateMaterial" class="field-label">
+                    Build Plate Material
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Type of build surface material"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-dropdown formControlName="buildPlateMaterial"
+                              inputId="buildPlateMaterial"
+                              [options]="dropdownOptions.buildPlateMaterial"
+                              optionLabel="label"
+                              optionValue="value"
+                              placeholder="Select material"
+                              styleClass="field-input"
+                              appendTo="body"
+                              [class.field-error]="isFieldInvalid('buildPlateMaterial')">
+                  </p-dropdown>
+                  <small *ngIf="isFieldInvalid('buildPlateMaterial')" class="field-error-message">
+                    {{ getFieldErrorMessage('buildPlateMaterial') }}
+                  </small>
+                </div>
+
+                <!-- Bed Size X -->
+                <div class="field-container">
+                  <label for="bedSizeXMm" class="field-label">
+                    Bed Size X
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Physical bed width"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="bedSizeXMm"
+                                 inputId="bedSizeXMm"
+                                 [min]="1"
+                                 [max]="1000"
+                                 suffix="mm"
+                                 placeholder="220"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('bedSizeXMm')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('bedSizeXMm')" class="field-error-message">
+                    {{ getFieldErrorMessage('bedSizeXMm') }}
+                  </small>
+                </div>
+
+                <!-- Bed Size Y -->
+                <div class="field-container">
+                  <label for="bedSizeYMm" class="field-label">
+                    Bed Size Y
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Physical bed depth"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="bedSizeYMm"
+                                 inputId="bedSizeYMm"
+                                 [min]="1"
+                                 [max]="1000"
+                                 suffix="mm"
+                                 placeholder="220"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('bedSizeYMm')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('bedSizeYMm')" class="field-error-message">
+                    {{ getFieldErrorMessage('bedSizeYMm') }}
+                  </small>
+                </div>
+
+              </div>
+            </p-card>
+          </div>
+        </p-tabPanel>
+
+        <!-- Extruder Tab -->
+        <p-tabPanel header="Extruder">
+          <ng-template pTemplate="header">
+            <div class="tab-header">
+              <i class="pi pi-cog tab-icon"></i>
+              <span class="tab-label">Extruder</span>
+            </div>
+          </ng-template>
+
+          <div class="tab-content">
+            <p-card styleClass="field-card">
+              <div class="field-grid">
+
+                <!-- Extruder Count -->
+                <div class="field-container">
+                  <label for="extruderCount" class="field-label">
+                    Number of Extruders
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="How many extruders the printer has"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="extruderCount"
+                                 inputId="extruderCount"
+                                 [min]="1"
+                                 [max]="10"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('extruderCount')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('extruderCount')" class="field-error-message">
+                    {{ getFieldErrorMessage('extruderCount') }}
+                  </small>
+                </div>
+
+                <!-- Nozzle Diameter -->
+                <div class="field-container">
+                  <label for="nozzleDiameterMm" class="field-label">
+                    Nozzle Diameter
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Diameter of the nozzle opening"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="nozzleDiameterMm"
+                                 inputId="nozzleDiameterMm"
+                                 [min]="0.1"
+                                 [max]="2.0"
+                                 [minFractionDigits]="2"
+                                 [maxFractionDigits]="2"
+                                 suffix="mm"
+                                 placeholder="0.4"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('nozzleDiameterMm')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('nozzleDiameterMm')" class="field-error-message">
+                    {{ getFieldErrorMessage('nozzleDiameterMm') }}
+                  </small>
+                </div>
+
+                <!-- Max Nozzle Temperature -->
+                <div class="field-container">
+                  <label for="maxNozzleTempC" class="field-label">
+                    Max Nozzle Temperature
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Maximum safe nozzle temperature"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="maxNozzleTempC"
+                                 inputId="maxNozzleTempC"
+                                 [min]="100"
+                                 [max]="500"
+                                 suffix="°C"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('maxNozzleTempC')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('maxNozzleTempC')" class="field-error-message">
+                    {{ getFieldErrorMessage('maxNozzleTempC') }}
+                  </small>
+                </div>
+
+                <!-- Hotend Type -->
+                <div class="field-container">
+                  <label for="hotendType" class="field-label">
+                    Hotend Type
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Type of hotend system"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-dropdown formControlName="hotendType"
+                              inputId="hotendType"
+                              [options]="dropdownOptions.hotend"
+                              optionLabel="label"
+                              optionValue="value"
+                              placeholder="Select hotend type"
+                              styleClass="field-input"
+                              appendTo="body"
+                              [class.field-error]="isFieldInvalid('hotendType')">
+                  </p-dropdown>
+                  <small *ngIf="isFieldInvalid('hotendType')" class="field-error-message">
+                    {{ getFieldErrorMessage('hotendType') }}
+                  </small>
+                </div>
+
+              </div>
+            </p-card>
+          </div>
+        </p-tabPanel>
+
+        <!-- Motion Tab -->
+        <p-tabPanel header="Motion">
+          <ng-template pTemplate="header">
+            <div class="tab-header">
+              <i class="pi pi-directions tab-icon"></i>
+              <span class="tab-label">Motion</span>
+            </div>
+          </ng-template>
+
+          <div class="tab-content">
+            <p-card styleClass="field-card">
+              <div class="field-grid">
+
+                <!-- Kinematics Type -->
+                <div class="field-container md:col-span-2">
+                  <label for="kinematicsType" class="field-label">
+                    Kinematics Type
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Type of motion system"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-dropdown formControlName="kinematicsType"
+                              inputId="kinematicsType"
+                              [options]="dropdownOptions.kinematics"
+                              optionLabel="label"
+                              optionValue="value"
+                              placeholder="Select kinematics type"
+                              styleClass="field-input"
+                              appendTo="body"
+                              [class.field-error]="isFieldInvalid('kinematicsType')">
+                  </p-dropdown>
+                  <small *ngIf="isFieldInvalid('kinematicsType')" class="field-error-message">
+                    {{ getFieldErrorMessage('kinematicsType') }}
+                  </small>
+                </div>
+
+                <!-- Max Print Speed -->
+                <div class="field-container">
+                  <label for="maxPrintSpeedMmS" class="field-label">
+                    Max Print Speed
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Maximum printing speed"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="maxPrintSpeedMmS"
+                                 inputId="maxPrintSpeedMmS"
+                                 [min]="1"
+                                 [max]="1000"
+                                 suffix="mm/s"
+                                 placeholder="100"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('maxPrintSpeedMmS')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('maxPrintSpeedMmS')" class="field-error-message">
+                    {{ getFieldErrorMessage('maxPrintSpeedMmS') }}
+                  </small>
+                </div>
+
+                <!-- Max Travel Speed -->
+                <div class="field-container">
+                  <label for="maxTravelSpeedMmS" class="field-label">
+                    Max Travel Speed
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Maximum travel speed"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="maxTravelSpeedMmS"
+                                 inputId="maxTravelSpeedMmS"
+                                 [min]="1"
+                                 [max]="1000"
+                                 suffix="mm/s"
+                                 placeholder="150"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('maxTravelSpeedMmS')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('maxTravelSpeedMmS')" class="field-error-message">
+                    {{ getFieldErrorMessage('maxTravelSpeedMmS') }}
+                  </small>
+                </div>
+
+                <!-- Max Acceleration -->
+                <div class="field-container">
+                  <label for="maxAccelerationMmS2" class="field-label">
+                    Max Acceleration
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Maximum acceleration"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="maxAccelerationMmS2"
+                                 inputId="maxAccelerationMmS2"
+                                 [min]="100"
+                                 [max]="10000"
+                                 suffix="mm/s²"
+                                 placeholder="3000"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('maxAccelerationMmS2')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('maxAccelerationMmS2')" class="field-error-message">
+                    {{ getFieldErrorMessage('maxAccelerationMmS2') }}
+                  </small>
+                </div>
+
+                <!-- Max Jerk -->
+                <div class="field-container">
+                  <label for="maxJerkMmS" class="field-label">
+                    Max Jerk
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Maximum jerk setting"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="maxJerkMmS"
+                                 inputId="maxJerkMmS"
+                                 [min]="1"
+                                 [max]="100"
+                                 suffix="mm/s"
+                                 placeholder="10"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('maxJerkMmS')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('maxJerkMmS')" class="field-error-message">
+                    {{ getFieldErrorMessage('maxJerkMmS') }}
+                  </small>
+                </div>
+
+              </div>
+            </p-card>
+          </div>
+        </p-tabPanel>
+
+        <!-- Heating Tab -->
+        <p-tabPanel header="Heating">
+          <ng-template pTemplate="header">
+            <div class="tab-header">
+              <i class="pi pi-sun tab-icon"></i>
+              <span class="tab-label">Heating</span>
+            </div>
+          </ng-template>
+
+          <div class="tab-content">
+            <p-card styleClass="field-card">
+              <div class="field-grid">
+
+                <!-- Heated Bed -->
+                <div class="field-container">
+                  <label for="hasHeatedBed" class="field-label">
+                    Heated Bed
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Does the printer have a heated bed?"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-dropdown formControlName="hasHeatedBed"
+                              inputId="hasHeatedBed"
+                              [options]="dropdownOptions.yesNo"
+                              optionLabel="label"
+                              optionValue="value"
+                              placeholder="Select option"
+                              styleClass="field-input"
+                              appendTo="body"
+                              [class.field-error]="isFieldInvalid('hasHeatedBed')">
+                  </p-dropdown>
+                  <small *ngIf="isFieldInvalid('hasHeatedBed')" class="field-error-message">
+                    {{ getFieldErrorMessage('hasHeatedBed') }}
+                  </small>
+                </div>
+
+                <!-- Max Bed Temperature -->
+                <div class="field-container">
+                  <label for="maxBedTempC" class="field-label">
+                    Max Bed Temperature
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Maximum bed temperature"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="maxBedTempC"
+                                 inputId="maxBedTempC"
+                                 [min]="0"
+                                 [max]="200"
+                                 suffix="°C"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('maxBedTempC')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('maxBedTempC')" class="field-error-message">
+                    {{ getFieldErrorMessage('maxBedTempC') }}
+                  </small>
+                </div>
+
+                <!-- Heated Chamber -->
+                <div class="field-container">
+                  <label for="hasHeatedChamber" class="field-label">
+                    Heated Chamber
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Does the printer have a heated chamber?"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-dropdown formControlName="hasHeatedChamber"
+                              inputId="hasHeatedChamber"
+                              [options]="dropdownOptions.yesNo"
+                              optionLabel="label"
+                              optionValue="value"
+                              placeholder="Select option"
+                              styleClass="field-input"
+                              appendTo="body"
+                              [class.field-error]="isFieldInvalid('hasHeatedChamber')">
+                  </p-dropdown>
+                  <small *ngIf="isFieldInvalid('hasHeatedChamber')" class="field-error-message">
+                    {{ getFieldErrorMessage('hasHeatedChamber') }}
+                  </small>
+                </div>
+
+                <!-- Max Chamber Temperature -->
+                <div class="field-container">
+                  <label for="maxChamberTempC" class="field-label">
+                    Max Chamber Temperature
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Maximum chamber temperature"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="maxChamberTempC"
+                                 inputId="maxChamberTempC"
+                                 [min]="0"
+                                 [max]="150"
+                                 suffix="°C"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('maxChamberTempC')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('maxChamberTempC')" class="field-error-message">
+                    {{ getFieldErrorMessage('maxChamberTempC') }}
+                  </small>
+                </div>
+
+              </div>
+            </p-card>
+          </div>
+        </p-tabPanel>
+
+        <!-- Features Tab -->
+        <p-tabPanel header="Features">
+          <ng-template pTemplate="header">
+            <div class="tab-header">
+              <i class="pi pi-star tab-icon"></i>
+              <span class="tab-label">Features</span>
+            </div>
+          </ng-template>
+
+          <div class="tab-content">
+            <p-card styleClass="field-card">
+              <div class="field-grid">
+
+                <!-- Auto Bed Leveling -->
+                <div class="field-container">
+                  <label for="hasAutoBedLeveling" class="field-label">
+                    Auto Bed Leveling
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Does the printer have automatic bed leveling?"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-dropdown formControlName="hasAutoBedLeveling"
+                              inputId="hasAutoBedLeveling"
+                              [options]="dropdownOptions.yesNo"
+                              optionLabel="label"
+                              optionValue="value"
+                              placeholder="Select option"
+                              styleClass="field-input"
+                              appendTo="body"
+                              [class.field-error]="isFieldInvalid('hasAutoBedLeveling')">
+                  </p-dropdown>
+                  <small *ngIf="isFieldInvalid('hasAutoBedLeveling')" class="field-error-message">
+                    {{ getFieldErrorMessage('hasAutoBedLeveling') }}
+                  </small>
+                </div>
+
+                <!-- Bed Leveling Type -->
+                <div class="field-container">
+                  <label for="bedLevelingType" class="field-label">
+                    Bed Leveling Type
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Type of bed leveling system"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-dropdown formControlName="bedLevelingType"
+                              inputId="bedLevelingType"
+                              [options]="dropdownOptions.bedLeveling"
+                              optionLabel="label"
+                              optionValue="value"
+                              placeholder="Select type"
+                              styleClass="field-input"
+                              appendTo="body"
+                              [class.field-error]="isFieldInvalid('bedLevelingType')">
+                  </p-dropdown>
+                  <small *ngIf="isFieldInvalid('bedLevelingType')" class="field-error-message">
+                    {{ getFieldErrorMessage('bedLevelingType') }}
+                  </small>
+                </div>
+
+                <!-- Filament Sensor -->
+                <div class="field-container">
+                  <label for="hasFilamentSensor" class="field-label">
+                    Filament Sensor
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Does the printer detect filament runout?"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-dropdown formControlName="hasFilamentSensor"
+                              inputId="hasFilamentSensor"
+                              [options]="dropdownOptions.yesNo"
+                              optionLabel="label"
+                              optionValue="value"
+                              placeholder="Select option"
+                              styleClass="field-input"
+                              appendTo="body"
+                              [class.field-error]="isFieldInvalid('hasFilamentSensor')">
+                  </p-dropdown>
+                  <small *ngIf="isFieldInvalid('hasFilamentSensor')" class="field-error-message">
+                    {{ getFieldErrorMessage('hasFilamentSensor') }}
+                  </small>
+                </div>
+
+                <!-- Power Recovery -->
+                <div class="field-container">
+                  <label for="hasPowerRecovery" class="field-label">
+                    Power Recovery
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Can the printer recover from power loss?"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-dropdown formControlName="hasPowerRecovery"
+                              inputId="hasPowerRecovery"
+                              [options]="dropdownOptions.yesNo"
+                              optionLabel="label"
+                              optionValue="value"
+                              placeholder="Select option"
+                              styleClass="field-input"
+                              appendTo="body"
+                              [class.field-error]="isFieldInvalid('hasPowerRecovery')">
+                  </p-dropdown>
+                  <small *ngIf="isFieldInvalid('hasPowerRecovery')" class="field-error-message">
+                    {{ getFieldErrorMessage('hasPowerRecovery') }}
+                  </small>
+                </div>
+
+                <!-- Resume Print -->
+                <div class="field-container">
+                  <label for="hasResumePrint" class="field-label">
+                    Resume Print
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Can the printer resume interrupted prints?"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-dropdown formControlName="hasResumePrint"
+                              inputId="hasResumePrint"
+                              [options]="dropdownOptions.yesNo"
+                              optionLabel="label"
+                              optionValue="value"
+                              placeholder="Select option"
+                              styleClass="field-input"
+                              appendTo="body"
+                              [class.field-error]="isFieldInvalid('hasResumePrint')">
+                  </p-dropdown>
+                  <small *ngIf="isFieldInvalid('hasResumePrint')" class="field-error-message">
+                    {{ getFieldErrorMessage('hasResumePrint') }}
+                  </small>
+                </div>
+
+                <!-- Min Layer Height -->
+                <div class="field-container">
+                  <label for="minLayerHeightMm" class="field-label">
+                    Min Layer Height
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Minimum achievable layer height"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="minLayerHeightMm"
+                                 inputId="minLayerHeightMm"
+                                 [min]="0.01"
+                                 [max]="1.0"
+                                 [minFractionDigits]="2"
+                                 [maxFractionDigits]="2"
+                                 [step]="0.01"
+                                 suffix="mm"
+                                 placeholder="0.1"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('minLayerHeightMm')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('minLayerHeightMm')" class="field-error-message">
+                    {{ getFieldErrorMessage('minLayerHeightMm') }}
+                  </small>
+                </div>
+
+                <!-- Max Layer Height -->
+                <div class="field-container">
+                  <label for="maxLayerHeightMm" class="field-label">
+                    Max Layer Height
+                    <span class="required-asterisk">*</span>
+                    <i class="pi pi-info-circle tooltip-icon"
+                       pTooltip="Maximum recommended layer height"
+                       tooltipPosition="top">
+                    </i>
+                  </label>
+                  <p-inputNumber formControlName="maxLayerHeightMm"
+                                 inputId="maxLayerHeightMm"
+                                 [min]="0.1"
+                                 [max]="2.0"
+                                 [minFractionDigits]="2"
+                                 [maxFractionDigits]="2"
+                                 [step]="0.01"
+                                 suffix="mm"
+                                 placeholder="0.3"
+                                 [showButtons]="true"
+                                 buttonLayout="horizontal"
+                                 spinnerMode="horizontal"
+                                 styleClass="field-input"
+                                 [class.field-error]="isFieldInvalid('maxLayerHeightMm')">
+                  </p-inputNumber>
+                  <small *ngIf="isFieldInvalid('maxLayerHeightMm')" class="field-error-message">
+                    {{ getFieldErrorMessage('maxLayerHeightMm') }}
+                  </small>
+                </div>
+
+              </div>
+            </p-card>
+          </div>
+        </p-tabPanel>
+
+      </p-tabView>
+    </form>
+  </div>
+
+  <!-- Footer Actions -->
+  <div class="dialog-footer">
+    <div class="footer-actions">
+      <p-button label="Cancel"
+                icon="pi pi-times"
+                severity="secondary"
+                [text]="true"
+                (onClick)="onCancelClick()"
+                [disabled]="saving"
+                styleClass="cancel-button" />
+
+      <p-button [label]="isCreateMode ? 'Create Printer' : 'Save Changes'"
+                icon="pi pi-check"
+                (onClick)="onSaveClick()"
+                [loading]="saving"
+                [disabled]="!canSave"
+                styleClass="save-button" />
+    </div>
+
+    <!-- Form Status -->
+    <div class="form-status" *ngIf="printerForm.invalid && printerForm.touched">
+      <small class="status-text">
+        <i class="pi pi-exclamation-circle"></i>
+        Please fix the errors above before saving
+      </small>
+    </div>
+  </div>
+</div>

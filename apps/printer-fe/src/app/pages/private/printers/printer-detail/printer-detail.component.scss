@@ -1,0 +1,430 @@
+// Simplified Printer Detail Component Styles
+.printer-detail-dialog {
+  display: flex;
+  flex-direction: column;
+  height: 75vh;
+  max-height: 800px;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+
+  @media (max-width: 1024px) {
+    max-width: 90vw;
+    height: 85vh;
+  }
+
+  @media (max-width: 768px) {
+    max-width: 95vw;
+    height: 90vh;
+  }
+}
+
+// Loading Container
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 1rem;
+
+  .loading-text {
+    color: var(--text-color-secondary);
+    font-size: 1rem;
+    margin: 0;
+  }
+}
+
+// Error Container
+.error-container {
+  padding: 1rem 2rem;
+}
+
+// Main Content
+.dialog-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
+
+  .printer-form {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+// Simplified Tab Styles
+::ng-deep .modern-tabs {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  .p-tabview-nav {
+    background: var(--surface-0);
+    border-bottom: 2px solid var(--surface-border);
+    padding: 0.5rem 1rem;
+    margin: 0;
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    min-height: 60px;
+
+    // Scrollbar per i tab su mobile
+    &::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: var(--surface-100);
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: var(--surface-400);
+      border-radius: 2px;
+    }
+
+    .p-tabview-nav-link {
+      border: 2px solid transparent !important;
+      border-radius: 8px;
+      margin-right: 0.5rem;
+      padding: 0.75rem 1rem;
+      transition: all 0.2s ease;
+      background: var(--surface-100);
+      color: var(--text-color);
+      font-weight: 500;
+      min-width: fit-content;
+      white-space: nowrap;
+
+      &:hover {
+        background: var(--surface-200);
+        border-color: var(--primary-color) !important;
+      }
+
+      &:focus {
+        box-shadow: 0 0 0 2px var(--primary-color);
+        outline: none;
+      }
+    }
+
+    .p-highlight .p-tabview-nav-link {
+      background: var(--primary-color) !important;
+      color: var(--primary-color-text) !important;
+      border-color: var(--primary-color) !important;
+      font-weight: 600;
+
+      .tab-icon, .tab-label {
+        color: var(--primary-color-text) !important;
+      }
+
+      &:hover {
+        background: var(--primary-600) !important;
+      }
+    }
+  }
+
+  .p-tabview-panels {
+    flex: 1;
+    padding: 0;
+    background: var(--surface-ground);
+    overflow: auto;
+  }
+
+  .p-tabview-panel {
+    padding: 0 !important;
+    height: 100%;
+  }
+}
+
+// Tab Header
+.tab-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  .tab-icon {
+    font-size: 1rem;
+    color: inherit;
+  }
+
+  .tab-label {
+    font-size: 0.875rem;
+    color: inherit;
+    font-weight: inherit;
+  }
+}
+
+// Tab Content
+.tab-content {
+  padding: 1.5rem;
+  height: 100%;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--surface-100);
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--surface-400);
+    border-radius: 4px;
+
+    &:hover {
+      background: var(--surface-500);
+    }
+  }
+}
+
+// Simplified Field Card
+::ng-deep .field-card {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  border: 1px solid var(--surface-border);
+
+  .p-card-body {
+    padding: 2rem;
+  }
+
+  .p-card-content {
+    padding: 0;
+  }
+}
+
+// Responsive Field Grid
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 900px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+// Field Container
+.field-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  &.md\:col-span-2 {
+    @media (min-width: 768px) {
+      grid-column: span 2;
+    }
+  }
+}
+
+// Field Label
+.field-label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+
+  .required-asterisk {
+    color: var(--red-500);
+    font-weight: bold;
+  }
+
+  .tooltip-icon {
+    font-size: 0.75rem;
+    color: var(--primary-color);
+    cursor: help;
+  }
+}
+
+// Simplified Field Inputs
+::ng-deep {
+  .field-input {
+    width: 100%;
+    transition: all 0.2s ease;
+
+    &:focus {
+      box-shadow: 0 0 0 2px var(--primary-color);
+    }
+
+    &.field-error {
+      border-color: var(--red-500) !important;
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+    }
+  }
+
+  // Input Number
+  .p-inputnumber .p-inputnumber-input {
+    padding-right: 3rem;
+  }
+
+  // Dropdown
+  .p-dropdown .p-dropdown-label {
+    padding: 0.75rem;
+  }
+
+  // Calendar
+  .p-calendar {
+    .p-inputtext {
+      padding-right: 2.5rem;
+    }
+
+    .p-datepicker-trigger {
+      right: 0.75rem;
+      color: var(--primary-color);
+    }
+  }
+}
+
+// Error Messages
+.field-error-message {
+  color: var(--red-500);
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
+// Simplified Footer
+.dialog-footer {
+  padding: 1.5rem 2rem;
+  border-top: 2px solid var(--surface-border);
+  background: var(--surface-0);
+  border-radius: 0 0 12px 12px;
+
+  .footer-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+
+    @media (max-width: 480px) {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+  }
+
+  .form-status {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.75rem;
+
+    .status-text {
+      color: var(--orange-600);
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+    }
+  }
+}
+
+// Always Visible Button Styles
+::ng-deep {
+  .cancel-button {
+    background: var(--surface-100) !important;
+    border: 2px solid var(--surface-300) !important;
+    color: var(--text-color) !important;
+    font-weight: 500 !important;
+    padding: 0.75rem 1.5rem !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+
+    .p-button-label {
+      color: var(--text-color) !important;
+    }
+
+    &:hover {
+      background: var(--surface-200) !important;
+      border-color: var(--surface-400) !important;
+      transform: translateY(-1px);
+    }
+
+    &:focus {
+      box-shadow: 0 0 0 2px var(--primary-color) !important;
+    }
+
+    &:disabled {
+      opacity: 0.6 !important;
+      cursor: not-allowed !important;
+    }
+  }
+
+  .save-button {
+    background: var(--primary-color) !important;
+    border: 2px solid var(--primary-color) !important;
+    color: var(--primary-color-text) !important;
+    font-weight: 600 !important;
+    padding: 0.75rem 2rem !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+    min-width: 140px !important;
+
+    .p-button-label {
+      color: var(--primary-color-text) !important;
+    }
+
+    &:hover {
+      background: var(--primary-600) !important;
+      border-color: var(--primary-600) !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    &:focus {
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3) !important;
+    }
+
+    &:disabled {
+      opacity: 0.6 !important;
+      cursor: not-allowed !important;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+  }
+}
+
+// Smooth animations
+.tab-content {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Mobile optimizations
+@media (max-width: 768px) {
+  .printer-detail-dialog {
+    border-radius: 0;
+  }
+
+  .tab-content {
+    padding: 1rem;
+  }
+
+  .dialog-footer {
+    padding: 1rem 1.5rem;
+  }
+
+  ::ng-deep .field-card .p-card-body {
+    padding: 1.5rem;
+  }
+}

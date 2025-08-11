@@ -12,5 +12,8 @@
 
   <printer-printers-filter />
 
-  <printer-printers-grid [items]="items" />
+  <printer-printers-grid
+    [items]="items"
+    (viewDetail)="onViewDetail($event)"
+    (delete)="onDeletePrinter($event)" />
 </div>

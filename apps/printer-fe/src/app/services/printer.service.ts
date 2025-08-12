@@ -7,6 +7,7 @@ import {
   PrinterDetailDto,
   PrinterDetailSaveDto,
   PrinterDto,
+  PrinterFilterDto,
   PrinterSaveDto,
 } from '../core/models/printer.models';
 
@@ -48,6 +49,42 @@ export class PrinterService {
     return this.http.patch<string>(
       `${UriCostants.printerUrl}/detail/${printerDetail.id}`,
       printerDetail
+    );
+  }
+
+  /**
+   * Search printers with filters - following materials pattern
+   */
+  public searchPrinters(filters: PrinterFilterDto): Observable<PrinterDto[]> {
+    const params = new URLSearchParams();
+
+    if (filters.name) params.append('name', filters.name);
+    if (filters.driverId) params.append('driverId', filters.driverId);
+    if (filters.status) params.append('status', filters.status);
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${UriCostants.printerUrl}/search?${queryString}`
+      : `${UriCostants.printerUrl}`;
+
+    return this.http.get<PrinterDto[]>(url);
+  }
+
+  /**
+   * Get printers by status
+   */
+  public getPrintersByStatus(status: string): Observable<PrinterDto[]> {
+    return this.http.get<PrinterDto[]>(
+      `${UriCostants.printerUrl}/status/${status}`
+    );
+  }
+
+  /**
+   * Get printers by driver ID
+   */
+  public getPrintersByDriverId(driverId: string): Observable<PrinterDto[]> {
+    return this.http.get<PrinterDto[]>(
+      `${UriCostants.printerUrl}/driver/${driverId}`
     );
   }
 

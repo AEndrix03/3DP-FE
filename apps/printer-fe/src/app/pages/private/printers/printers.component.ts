@@ -1,6 +1,7 @@
 import {
   Component,
   inject,
+  OnDestroy,
   OnInit,
   signal,
   WritableSignal,
@@ -20,7 +21,15 @@ import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { PrinterService } from '../../../services/printer.service';
 import { PrinterDetailComponent } from './printer-detail/printer-detail.component';
-import { catchError, finalize, of, take, tap } from 'rxjs';
+import {
+  catchError,
+  filter,
+  of,
+  Subject,
+  switchMap,
+  takeUntil,
+  tap,
+} from 'rxjs';
 
 @Component({
   selector: 'printer-printers',
@@ -37,27 +46,32 @@ import { catchError, finalize, of, take, tap } from 'rxjs';
   providers: [DialogService, MessageService, ConfirmationService],
   templateUrl: './printers.component.html',
 })
-export class PrintersComponent implements OnInit {
+export class PrintersComponent implements OnInit, OnDestroy {
   private readonly printerService = inject(PrinterService);
   private readonly dialogService = inject(DialogService);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
 
-  // Use signals like in materials component
-  private readonly allPrinters: WritableSignal<PrinterDto[]> = signal([]);
-  private readonly filteredPrinters: WritableSignal<PrinterDto[]> = signal([]);
+  // Following materials component pattern - single signal for printers
+  private readonly printers: WritableSignal<PrinterDto[]> = signal([]);
   private readonly loading: WritableSignal<boolean> = signal(false);
   private readonly activeFilters: WritableSignal<PrinterFilterDto> = signal({});
 
+  private readonly destroy$ = new Subject<void>();
   protected dialogRef: DynamicDialogRef | undefined;
 
   ngOnInit(): void {
     this.loadPrinters();
   }
 
-  // Getters for template
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  // Getters for template - following materials pattern
   get items(): PrinterDto[] {
-    return this.filteredPrinters();
+    return this.printers();
   }
 
   get isLoading(): boolean {
@@ -66,63 +80,61 @@ export class PrintersComponent implements OnInit {
 
   protected onFiltersChanged(filters: PrinterFilterDto): void {
     this.activeFilters.set(filters);
-    this.applyFilters(filters);
+    this.searchPrinters(filters);
   }
 
   private loadPrinters(): void {
     this.loading.set(true);
-
     this.printerService
       .getAllPrinters()
       .pipe(
-        take(1),
-        tap((printers: PrinterDto[]) => {
-          this.allPrinters.set(printers);
-          // Apply current filters to new data
-          this.applyFilters(this.activeFilters());
+        tap((printers) => {
+          this.printers.set(printers);
+          this.loading.set(false);
         }),
         catchError((error) => {
           console.error('Error loading printers:', error);
           this.messageService.add({
             severity: 'error',
             summary: 'Error',
-            detail: 'Failed to load printers. Please try again.',
+            detail: 'Failed to load printers',
           });
+          this.loading.set(false);
           return of([]);
         }),
-        finalize(() => this.loading.set(false))
+        takeUntil(this.destroy$)
       )
       .subscribe();
   }
 
-  private applyFilters(filters: PrinterFilterDto): void {
-    let filtered = [...this.allPrinters()];
-
-    // Filter by name
-    if (filters.name && filters.name.trim()) {
-      const nameFilter = filters.name.toLowerCase().trim();
-      filtered = filtered.filter((printer) =>
-        printer.name.toLowerCase().includes(nameFilter)
-      );
+  private searchPrinters(filters: PrinterFilterDto): void {
+    // If no filters are active, load all printers - following materials pattern
+    if (!filters.name && !filters.driverId && !filters.status) {
+      this.loadPrinters();
+      return;
     }
 
-    // Filter by driver ID
-    if (filters.driverId && filters.driverId.trim()) {
-      const driverFilter = filters.driverId.toLowerCase().trim();
-      filtered = filtered.filter((printer) =>
-        printer.driverId?.toLowerCase().includes(driverFilter)
-      );
-    }
-
-    // Filter by status
-    if (filters.status) {
-      filtered = filtered.filter(
-        (printer) =>
-          printer.status?.code?.toUpperCase() === filters.status?.toUpperCase()
-      );
-    }
-
-    this.filteredPrinters.set(filtered);
+    this.loading.set(true);
+    this.printerService
+      .searchPrinters(filters)
+      .pipe(
+        tap((printers) => {
+          this.printers.set(printers);
+          this.loading.set(false);
+        }),
+        catchError((error) => {
+          console.error('Error searching printers:', error);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Search Error',
+            detail: 'Failed to search printers',
+          });
+          this.loading.set(false);
+          return of([]);
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe();
   }
 
   protected createPrinter(): void {
@@ -136,16 +148,23 @@ export class PrintersComponent implements OnInit {
       },
     });
 
-    this.dialogRef.onClose.subscribe((result) => {
-      if (result?.saved) {
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'Printer created successfully.',
-        });
-        this.loadPrinters();
-      }
-    });
+    this.dialogRef.onClose
+      .pipe(
+        filter((result) => result !== null && result !== undefined),
+        tap(() => this.loading.set(true)),
+        switchMap(() => {
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Printer created successfully',
+          });
+          return of(null);
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        this.refreshData();
+      });
   }
 
   protected onViewDetail(printerId: string): void {
@@ -160,25 +179,28 @@ export class PrintersComponent implements OnInit {
       },
     });
 
-    this.dialogRef.onClose.subscribe((result) => {
-      if (result?.saved) {
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'Printer updated successfully.',
-        });
-        this.loadPrinters();
-      }
-    });
+    this.dialogRef.onClose
+      .pipe(
+        filter((result) => result !== null && result !== undefined),
+        tap(() => this.loading.set(true)),
+        switchMap(() => {
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Printer updated successfully',
+          });
+          return of(null);
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        this.refreshData();
+      });
   }
 
   protected onDeletePrinter(printerId: string): void {
-    console.log('onDeletePrinter called with ID:', printerId);
-
-    const printer = this.allPrinters().find((p) => p.id === printerId);
+    const printer = this.printers().find((p) => p.id === printerId);
     const printerName = printer?.name || 'this printer';
-
-    console.log('Found printer:', printer);
 
     this.confirmationService.confirm({
       message: `Are you sure you want to delete "${printerName}"? This action cannot be undone and will remove all associated data.`,
@@ -189,7 +211,6 @@ export class PrintersComponent implements OnInit {
       acceptLabel: 'Delete',
       rejectLabel: 'Cancel',
       accept: () => {
-        console.log('Delete confirmed, calling deletePrinter');
         this.deletePrinter(printerId, printerName);
       },
       reject: () => {
@@ -199,33 +220,21 @@ export class PrintersComponent implements OnInit {
   }
 
   private deletePrinter(printerId: string, printerName: string): void {
-    console.log('deletePrinter called for:', printerId, printerName);
-
     this.printerService
       .deletePrinter(printerId)
-      .pipe(take(1))
-      .subscribe({
-        next: () => {
-          console.log('Delete successful');
-
+      .pipe(
+        tap(() => {
           this.messageService.add({
             severity: 'success',
-            summary: 'Printer Deleted',
-            detail: `"${printerName}" has been successfully deleted.`,
-            life: 5000,
+            summary: 'Success',
+            detail: 'Printer deleted successfully',
           });
+          this.refreshData();
+        }),
+        catchError((error) => {
+          console.error('Error deleting printer:', error);
 
-          // Remove from both arrays and re-apply filters
-          const updatedPrinters = this.allPrinters().filter(
-            (p) => p.id !== printerId
-          );
-          this.allPrinters.set(updatedPrinters);
-          this.applyFilters(this.activeFilters());
-        },
-        error: (error) => {
-          console.error('Delete error:', error);
-
-          let errorMessage = 'Failed to delete the printer. Please try again.';
+          let errorMessage = 'Failed to delete printer';
 
           if (error?.status === 409) {
             errorMessage =
@@ -233,38 +242,40 @@ export class PrintersComponent implements OnInit {
           } else if (error?.status === 404) {
             errorMessage =
               'Printer not found. It may have already been deleted.';
-            // Remove from local arrays since it doesn't exist on server
-            const updatedPrinters = this.allPrinters().filter(
-              (p) => p.id !== printerId
-            );
-            this.allPrinters.set(updatedPrinters);
-            this.applyFilters(this.activeFilters());
+            // Still refresh to remove from UI
+            this.refreshData();
           } else if (error?.status === 403) {
             errorMessage = 'You do not have permission to delete this printer.';
           }
 
           this.messageService.add({
             severity: 'error',
-            summary: 'Delete Failed',
+            summary: 'Error',
             detail: errorMessage,
-            life: 7000,
           });
-        },
-      });
+          return of(null);
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe();
   }
 
-  /**
-   * Refresh the printers list - can be called from template if needed
-   */
-  protected refreshPrinters(): void {
-    this.loadPrinters();
+  private refreshData(): void {
+    // If we have active filters, search with them, otherwise load all
+    // Following materials pattern exactly
+    const filters = this.activeFilters();
+    if (filters.name || filters.driverId || filters.status) {
+      this.searchPrinters(filters);
+    } else {
+      this.loadPrinters();
+    }
   }
 
   /**
    * Get count of online printers for display purposes
    */
   protected get onlinePrintersCount(): number {
-    return this.allPrinters().filter((p) => {
+    return this.printers().filter((p) => {
       const status = p.status?.code?.toUpperCase();
       return ['ONLINE', 'CONNECTED', 'PRINTING', 'PAUSED', 'IDLE'].includes(
         status || ''
@@ -273,16 +284,9 @@ export class PrintersComponent implements OnInit {
   }
 
   /**
-   * Get count of filtered results
-   */
-  protected get filteredCount(): number {
-    return this.filteredPrinters().length;
-  }
-
-  /**
    * Get total count
    */
   protected get totalCount(): number {
-    return this.allPrinters().length;
+    return this.printers().length;
   }
 }

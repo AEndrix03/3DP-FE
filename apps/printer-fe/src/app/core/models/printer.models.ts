@@ -4,7 +4,7 @@ export interface PrinterDto {
   driverId: string;
   status?: PrinterStatusDto;
   lastSeen: Date;
-  imageUrl?: string;
+  image?: string;
 }
 
 export interface PrinterCreateDto {
@@ -19,6 +19,7 @@ export interface PrinterSaveDto extends PrinterCreateDto {
 export interface PrinterFilterDto {
   name?: string;
   driverId?: string;
+  status?: string | null;
 }
 
 export interface PrinterStatusDto {
@@ -61,6 +62,7 @@ export interface PrinterDetailDto extends PrinterDto {
 
 export interface PrinterDetailSaveDto {
   id?: string;
+  image: string;
   name: string;
   driverId?: string;
   firmwareVersionId?: string;

@@ -1,23 +1,100 @@
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <p-iconfield>
-    <p-inputicon styleClass="pi pi-search" />
-    <input
-      type="text"
-      pInputText
-      [formControl]="nameFc()"
-      placeholder="Search by name"
-      class="w-full py-2 rounded-md border border-surface-400"
-    />
-  </p-iconfield>
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 p-2 rounded-lg shadow-sm">
 
-  <p-iconfield>
-    <p-inputicon styleClass="pi pi-id-card" />
-    <input
-      type="text"
-      pInputText
-      [formControl]="driverIdFc()"
-      placeholder="Search by Driver ID"
-      class="w-full py-2 rounded-md border border-surface-400"
+  <!-- Search by name -->
+  <div class="space-y-2">
+    <label for="printerName" class="block text-sm font-medium text-gray-700">Search Printer</label>
+    <p-iconfield>
+      <p-inputicon styleClass="pi pi-search" />
+      <input
+        id="printerName"
+        type="text"
+        pInputText
+        [formControl]="nameFc()"
+        placeholder="Search by name..."
+        class="w-full"
+      />
+    </p-iconfield>
+  </div>
+
+  <!-- Filter by driver ID -->
+  <div class="space-y-2">
+    <label for="driverId" class="block text-sm font-medium text-gray-700">Driver ID</label>
+    <p-iconfield>
+      <p-inputicon styleClass="pi pi-cog" />
+      <input
+        id="driverId"
+        type="text"
+        pInputText
+        [formControl]="driverIdFc()"
+        placeholder="Search by driver..."
+        class="w-full"
+      />
+    </p-iconfield>
+  </div>
+
+  <!-- Filter by status -->
+  <div class="space-y-2">
+    <label for="printerStatus" class="block text-sm font-medium text-gray-700">Status</label>
+    <p-dropdown
+      id="printerStatus"
+      [formControl]="statusFc()"
+      [options]="statusOptions"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="All statuses"
+      [showClear]="true"
+      [filter]="true"
+      class="w-full"
     />
-  </p-iconfield>
+  </div>
+
+  <!-- Actions -->
+  <div class="space-y-2 flex flex-col justify-end">
+    <div class="flex gap-2">
+      <p-button
+        icon="pi pi-filter-slash"
+        label="Clear"
+        severity="secondary"
+        size="small"
+        [text]="true"
+        (onClick)="clearFilters()"
+        [disabled]="!hasActiveFilters()"
+        class="flex-1"
+      />
+      <p-button
+        icon="pi pi-refresh"
+        severity="secondary"
+        size="small"
+        [text]="true"
+        (onClick)="refreshData()"
+        pTooltip="Refresh filters"
+        tooltipPosition="top"
+      />
+    </div>
+
+    <div class="flex flex-wrap gap-1" *ngIf="hasActiveFilters()">
+      <p-chip
+        *ngIf="nameFc().value"
+        [label]="'Name: ' + nameFc().value"
+        [removable]="true"
+        (onRemove)="nameFc().setValue('')"
+        styleClass="text-xs"
+      />
+      <p-chip
+        *ngIf="driverIdFc().value"
+        [label]="'Driver: ' + driverIdFc().value"
+        [removable]="true"
+        (onRemove)="driverIdFc().setValue('')"
+        styleClass="text-xs"
+      />
+      <p-chip
+        *ngIf="statusFc().value"
+        [label]="'Status: ' + getStatusLabel(statusFc().value)"
+        [removable]="true"
+        (onRemove)="statusFc().setValue(null)"
+        styleClass="text-xs"
+      />
+    </div>
+  </div>
+
 </div>

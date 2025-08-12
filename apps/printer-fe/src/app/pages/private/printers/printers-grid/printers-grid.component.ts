@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Button } from 'primeng/button';
 import { PrinterDto } from '../../../../core/models/printer.models';
+import { UriCostants } from '../../../../core/costants/uri-costants';
 
 @Component({
   selector: 'printer-printers-grid',
@@ -14,6 +15,20 @@ export class PrintersGridComponent {
 
   @Output() viewDetail = new EventEmitter<string>();
   @Output() delete = new EventEmitter<string>();
+
+  /**
+   * Get image URL from image ID
+   */
+  protected getImageUrl(imageId: string): string {
+    return `${UriCostants.filesUrl}/download?id=${imageId}`;
+  }
+
+  /**
+   * Check if printer has an image
+   */
+  protected hasImage(item: PrinterDto): boolean {
+    return !!item.image;
+  }
 
   /**
    * Get CSS classes for printer status badge

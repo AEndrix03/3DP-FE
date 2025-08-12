@@ -41,10 +41,10 @@
       <!-- Printer Image -->
       <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
         <img
-          *ngIf="item.imageUrl && item.imageUrl !== ''; else defaultImage"
-          [src]="item.imageUrl"
+          *ngIf="hasImage(item); else defaultImage"
+          [src]="getImageUrl(item.image!)"
           [alt]="item.name"
-          class="w-full h-full object-cover"
+          class="w-full h-full object-contain"
           (error)="onImageError($event)"
         />
         <ng-template #defaultImage>

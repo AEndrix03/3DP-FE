@@ -220,6 +220,193 @@
       grid-column: span 2;
     }
   }
+
+  // Image upload utility classes
+  .hidden {
+    display: none;
+  }
+
+  .border-dashed {
+    border-style: dashed;
+  }
+
+  .pointer-events-none {
+    pointer-events: none;
+  }
+
+  .transition-colors {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+
+  // Image container styles
+  .w-40 {
+    width: 10rem;
+  }
+
+  .w-32 {
+    width: 8rem;
+  }
+
+  .h-32 {
+    height: 8rem;
+  }
+
+  .max-w-xs {
+    max-width: 20rem;
+  }
+
+  .w-full {
+    width: 100%;
+  }
+
+  .border {
+    border-width: 1px;
+  }
+
+  .border-2 {
+    border-width: 2px;
+  }
+
+  .border-gray-200 {
+    border-color: #e5e7eb;
+  }
+
+  .border-gray-300 {
+    border-color: #d1d5db;
+  }
+
+  .rounded-lg {
+    border-radius: 0.5rem;
+  }
+
+  .overflow-hidden {
+    overflow: hidden;
+  }
+
+  .bg-gray-50 {
+    background-color: #f9fafb;
+  }
+
+  .hover\:bg-gray-100:hover {
+    background-color: #f3f4f6;
+  }
+
+  .flex {
+    display: flex;
+  }
+
+  .items-center {
+    align-items: center;
+  }
+
+  .justify-center {
+    justify-content: center;
+  }
+
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  .relative {
+    position: relative;
+  }
+
+  .absolute {
+    position: absolute;
+  }
+
+  .top-1 {
+    top: 0.25rem;
+  }
+
+  .right-1 {
+    right: 0.25rem;
+  }
+
+  .inset-0 {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  .bg-black {
+    background-color: #000000;
+  }
+
+  .bg-opacity-50 {
+    background-opacity: 0.5;
+  }
+
+  .text-white {
+    color: #ffffff;
+  }
+
+  .text-xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  .text-2xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+
+  .text-gray-400 {
+    color: #9ca3af;
+  }
+
+  .text-gray-600 {
+    color: #4b5563;
+  }
+
+  .text-center {
+    text-align: center;
+  }
+
+  .text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .text-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+
+  .mb-1 {
+    margin-bottom: 0.25rem;
+  }
+
+  .mb-2 {
+    margin-bottom: 0.5rem;
+  }
+
+  .mt-1 {
+    margin-top: 0.25rem;
+  }
+
+  .mt-2 {
+    margin-top: 0.5rem;
+  }
+
+  .gap-2 {
+    gap: 0.5rem;
+  }
+
+  .w-6 {
+    width: 1.5rem;
+  }
+
+  .h-6 {
+    height: 1.5rem;
+  }
+
+  .flex-1 {
+    flex: 1 1 0%;
+  }
 }
 
 // Field Label

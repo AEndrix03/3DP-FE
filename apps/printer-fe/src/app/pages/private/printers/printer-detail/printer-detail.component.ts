@@ -1,4 +1,11 @@
-import { Component, inject, OnDestroy, OnInit } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  inject,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   AbstractControl,
@@ -21,8 +28,11 @@ import { CardModule } from 'primeng/card';
 import { DividerModule } from 'primeng/divider';
 import { TooltipModule } from 'primeng/tooltip';
 import { DynamicDialogConfig, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { MessageService } from 'primeng/api';
 import { finalize, map, Subject, switchMap, take, takeUntil } from 'rxjs';
 import { PrinterService } from '../../../../services/printer.service';
+import { FileService } from '../../../../services/file.service';
+import { UriCostants } from '../../../../core/costants/uri-costants';
 import {
   PrinterDetailDto,
   PrinterDetailSaveDto,
@@ -52,12 +62,17 @@ interface PrinterDetailDialogData {
     DividerModule,
     TooltipModule,
   ],
+  providers: [MessageService],
   templateUrl: './printer-detail.component.html',
   styleUrls: ['./printer-detail.component.scss'],
 })
 export class PrinterDetailComponent implements OnInit, OnDestroy {
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+
   private readonly fb = inject(FormBuilder);
   private readonly printerService = inject(PrinterService);
+  private readonly fileService = inject(FileService);
+  private readonly messageService = inject(MessageService);
   private readonly dialogRef = inject(DynamicDialogRef);
   private readonly dialogConfig = inject(
     DynamicDialogConfig<PrinterDetailDialogData>
@@ -72,6 +87,7 @@ export class PrinterDetailComponent implements OnInit, OnDestroy {
   isCreateMode = false;
   printerId: string | null = null;
   activeTab = 0;
+  isUploadingImage = false;
 
   // Dropdown options - keep only the data, UI will be in template
   readonly dropdownOptions = {
@@ -139,6 +155,7 @@ export class PrinterDetailComponent implements OnInit, OnDestroy {
       driverId: [''],
       firmwareVersionId: [''],
       firmwareInstalledAt: [null],
+      image: [''], // New field for image ID
 
       // Dimensions
       buildVolumeXMm: [
@@ -390,6 +407,7 @@ export class PrinterDetailComponent implements OnInit, OnDestroy {
       hasFilamentSensor: printer.hasFilamentSensor?.toString() || 'false',
       hasPowerRecovery: printer.hasPowerRecovery?.toString() || 'false',
       hasResumePrint: printer.hasResumePrint?.toString() || 'false',
+      image: printer.image || '', // Include image field
     };
 
     this.printerForm.patchValue(formValue);
@@ -410,13 +428,16 @@ export class PrinterDetailComponent implements OnInit, OnDestroy {
     const formValue = this.printerForm.value;
 
     if (this.isCreateMode) {
-      this.createAndUpdatePrinter(formValue);
+      // Durante la creazione, non salviamo l'immagine - solo i dati base
+      this.createPrinter(formValue);
     } else {
+      // Durante l'update, salviamo tutto inclusa l'immagine
       this.updatePrinter(formValue);
     }
   }
 
-  private createAndUpdatePrinter(formValue: any): void {
+  private createPrinter(formValue: any): void {
+    // Creazione senza immagine - solo dati base
     this.printerService
       .createPrinter({
         name: formValue.name,
@@ -426,6 +447,7 @@ export class PrinterDetailComponent implements OnInit, OnDestroy {
         take(1),
         switchMap((createdId: string) => {
           this.printerForm.get('id')?.setValue(createdId);
+          // Dopo la creazione, salviamo tutti i dettagli inclusa l'immagine
           const saveDto: PrinterDetailSaveDto = { ...formValue, id: createdId };
           return this.printerService.savePrinterDetail(saveDto).pipe(
             take(1),
@@ -528,6 +550,136 @@ export class PrinterDetailComponent implements OnInit, OnDestroy {
     if (errors['positiveNumber']) return 'Must be a positive number';
 
     return 'Invalid value';
+  }
+
+  // Image handling methods (following Material pattern)
+
+  /**
+   * Get image URL from ID
+   */
+  protected getImageUrl(imageId: string | null): string | null {
+    if (!imageId) return null;
+    return `${UriCostants.filesUrl}/download?id=${imageId}`;
+  }
+
+  /**
+   * Get current image URL from form
+   */
+  protected getCurrentImageUrl(): string | null {
+    const imageId = this.printerForm.get('image')?.value;
+    return this.getImageUrl(imageId);
+  }
+
+  /**
+   * Check if printer has an image
+   */
+  protected get hasImage(): boolean {
+    return !!this.printerForm.get('image')?.value;
+  }
+
+  /**
+   * Opens file input dialog for image selection
+   */
+  protected onImportImageClick(): void {
+    this.fileInput.nativeElement.click();
+  }
+
+  /**
+   * Remove the current image
+   */
+  protected onRemoveImageClick(): void {
+    this.printerForm.patchValue({ image: '' });
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Image Removed',
+      detail: 'Printer image has been removed',
+    });
+  }
+
+  /**
+   * Handles file selection and upload
+   */
+  protected onFileSelected(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Invalid File',
+        detail: 'Please select a valid image file',
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSizeInMB = 5;
+    if (file.size > maxSizeInMB * 1024 * 1024) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'File Too Large',
+        detail: `File size must be less than ${maxSizeInMB}MB`,
+      });
+      return;
+    }
+
+    this.uploadImage(file);
+
+    // Clear the input so the same file can be selected again
+    target.value = '';
+  }
+
+  /**
+   * Uploads the selected image and updates the form
+   */
+  private uploadImage(file: File): void {
+    this.isUploadingImage = true;
+
+    this.fileService
+      .uploadImage(file)
+      .pipe(
+        finalize(() => {
+          this.isUploadingImage = false;
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (imageId: string) => {
+          // Update the form with the new image ID
+          this.printerForm.patchValue({
+            image: imageId,
+          });
+
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Upload Successful',
+            detail: 'Image uploaded successfully',
+          });
+        },
+        error: (error) => {
+          console.error('Image upload failed:', error);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Upload Failed',
+            detail: 'Failed to upload image. Please try again.',
+          });
+        },
+      });
+  }
+
+  /**
+   * Handle image loading errors
+   */
+  protected onImageError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    if (img) {
+      img.style.display = 'none';
+    }
   }
 
   // Getters for template

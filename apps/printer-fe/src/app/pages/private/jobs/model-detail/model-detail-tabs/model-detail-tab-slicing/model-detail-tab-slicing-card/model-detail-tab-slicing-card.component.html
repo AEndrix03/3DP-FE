@@ -21,6 +21,7 @@
         pTooltip="Start Print"
         tooltipPosition="bottom"
         size="small"
+        (onClick)="startPrint.emit(result().id)"
       />
       <p-button
         icon="pi pi-download"

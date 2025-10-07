@@ -1,0 +1,126 @@
+<div class="w-full">
+  <!-- Loading State -->
+  <div *ngIf="isLoading()" class="text-center py-12">
+    <i class="pi pi-spin pi-spinner text-4xl text-gray-400 mb-4"></i>
+    <p class="text-gray-600">Loading printers...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div
+    *ngIf="!isLoading() && printers().length === 0"
+    class="text-center py-12"
+  >
+    <i class="pi pi-inbox text-4xl text-gray-300 mb-4"></i>
+    <p class="text-lg font-medium text-gray-700 mb-2">No printers available</p>
+    <p class="text-sm text-gray-500">
+      There are no idle printers available for printing at the moment
+    </p>
+  </div>
+
+  <!-- Printers List -->
+  <div
+    *ngIf="!isLoading() && printers().length > 0"
+    class="flex flex-col gap-4"
+  >
+    <!-- Selection Info -->
+    <div
+      *ngIf="hasSelection()"
+      class="bg-blue-50 border border-blue-200 rounded-lg p-3"
+    >
+      <div class="flex items-center">
+        <i class="pi pi-check-circle text-blue-600 mr-2"></i>
+        <span class="text-blue-800 font-medium"
+        >{{ selectedPrinter()?.name }} selected</span
+        >
+      </div>
+    </div>
+
+    <!-- Printers Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+      <div
+        *ngFor="let printer of printers(); trackBy: trackByPrinterId"
+        class="printer-card relative border rounded-lg overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-md"
+        [class.selected]="isPrinterSelected(printer.id)"
+        [class.border-blue-500]="isPrinterSelected(printer.id)"
+        [class.border-gray-200]="!isPrinterSelected(printer.id)"
+        [class.bg-blue-50]="isPrinterSelected(printer.id)"
+        [class.bg-white]="!isPrinterSelected(printer.id)"
+        (click)="selectPrinter(printer.id)"
+      >
+        <!-- Selection Indicator -->
+        <div
+          class="absolute top-2 right-2 z-10 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200"
+          [class.bg-blue-500]="isPrinterSelected(printer.id)"
+          [class.border-blue-500]="isPrinterSelected(printer.id)"
+          [class.bg-white]="!isPrinterSelected(printer.id)"
+          [class.border-gray-300]="!isPrinterSelected(printer.id)"
+        >
+          <i
+            class="pi pi-check text-white text-xs"
+            *ngIf="isPrinterSelected(printer.id)"
+          ></i>
+        </div>
+
+        <!-- Printer Image -->
+        <div
+          class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden"
+        >
+          <img
+            *ngIf="printer.image && printer.image !== ''; else defaultImage"
+            [src]="printer.image"
+            [alt]="printer.name"
+            class="w-full h-full object-cover"
+            (error)="onImageError($event)"
+          />
+          <ng-template #defaultImage>
+            <div class="flex flex-col items-center justify-center text-gray-400">
+              <i class="pi pi-print text-3xl mb-1"></i>
+              <span class="text-xs">No Image</span>
+            </div>
+          </ng-template>
+        </div>
+
+        <!-- Printer Info -->
+        <div class="p-3">
+          <h4 class="font-medium text-gray-900 text-sm leading-tight mb-2">
+            {{ printer.name }}
+          </h4>
+
+          <!-- Status Badge -->
+          <div class="flex items-center gap-2 mb-2" *ngIf="printer.status">
+            <span
+              class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+            >
+              <i class="pi pi-circle-fill text-xs mr-1"></i>
+              {{ printer.status.description }}
+            </span>
+          </div>
+
+          <!-- Last Seen -->
+          <p class="text-xs text-gray-600">
+            <i class="pi pi-clock mr-1"></i>
+            Last seen: {{ formatDate(printer.lastSeen) }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+      <p-button
+        label="Cancel"
+        icon="pi pi-times"
+        severity="secondary"
+        (onClick)="onCancel()"
+        styleClass="p-button-text"
+      />
+      <p-button
+        label="Confirm"
+        icon="pi pi-check"
+        (onClick)="onConfirm()"
+        [disabled]="!hasSelection()"
+        styleClass="p-button-raised"
+      />
+    </div>
+  </div>
+</div>

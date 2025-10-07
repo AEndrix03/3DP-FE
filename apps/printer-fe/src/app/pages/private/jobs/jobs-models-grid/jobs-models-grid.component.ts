@@ -55,16 +55,31 @@ export class JobsModelsGridComponent {
   /**
    * Format date for display with improved formatting
    */
-  protected formatDate(date: Date | string): string {
+  protected formatDate(date: Date | string | number): string {
     if (!date) return '';
 
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    let dateObj: Date | null = null;
+
+    if (typeof date === 'number') {
+      // Convert from seconds to milliseconds
+      dateObj = new Date(date * 1000);
+    } else if (typeof date === 'string') {
+      // Try parsing as number first (for string timestamps)
+      const numericDate = parseFloat(date);
+      if (!isNaN(numericDate)) {
+        dateObj = new Date(numericDate * 1000);
+      } else {
+        dateObj = new Date(date);
+      }
+    } else if (date instanceof Date) {
+      dateObj = date;
+    }
+
+    if (!dateObj || isNaN(dateObj.getTime())) {
+      return 'Invalid date';
+    }
+
     const now = new Date();
-
-    // Check if date is valid
-    if (isNaN(dateObj.getTime())) return 'Invalid date';
-
-    // Show relative time for recent dates
     const diffMs = now.getTime() - dateObj.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));

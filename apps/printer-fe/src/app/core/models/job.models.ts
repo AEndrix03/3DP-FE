@@ -14,3 +14,8 @@ export interface JobStatusDto {
 }
 
 export type JobStatusCode = 'CRE' | 'QUE' | 'RUN' | 'STP' | 'ERR' | 'CMP';
+
+export interface JobStartRequestDto {
+  printerId: string;
+  slicingId: string;
+}

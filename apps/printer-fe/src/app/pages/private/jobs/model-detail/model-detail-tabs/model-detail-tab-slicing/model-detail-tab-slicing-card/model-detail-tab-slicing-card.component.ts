@@ -20,4 +20,5 @@ export class ModelDetailTabSlicingCardComponent {
   public readonly result: InputSignal<SlicingResultDto> = input.required();
 
   @Output() openDetail = new EventEmitter<string>();
+  @Output() startPrint = new EventEmitter<string>();
 }

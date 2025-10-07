@@ -67,4 +67,14 @@ export class PrinterService {
       {}
     );
   }
+
+  public getPrintersByStatus(status: string): Observable<PrinterDto[]> {
+    return this.http.get<PrinterDto[]>(
+      `${UriCostants.printerUrl}/status/${status}`
+    );
+  }
+
+  public getIdlePrinters(): Observable<PrinterDto[]> {
+    return this.getPrintersByStatus('IDL');
+  }
 }

@@ -28,4 +28,5 @@ export class ModelDetailTabSlicingComponent {
 
   @Output() openDetail = new EventEmitter<string>();
   @Output() startSlicing = new EventEmitter<void>();
+  @Output() startPrint = new EventEmitter<string>();
 }

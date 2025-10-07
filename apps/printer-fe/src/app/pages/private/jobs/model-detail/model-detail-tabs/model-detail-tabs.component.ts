@@ -22,6 +22,8 @@ import { filter, map, switchMap, tap } from 'rxjs';
 import { userStore } from '@3-dp-fe/praetor-auth-kit';
 import { SlicingQueueService } from '../../../../../services/slicing/slicing-queue.service';
 import { SlicingQueueCreateDto } from '../../../../../core/models/slicing/slicing-queue.models';
+import { PrinterStartComponent } from './printer-start/printer-start.component';
+import { JobService } from '../../../../../services/job.service';
 
 @Component({
   selector: 'printer-model-detail-tabs',
@@ -44,16 +46,19 @@ export class ModelDetailTabsComponent {
   constructor(
     private readonly router: Router,
     private readonly dialogService: DialogService,
+    private readonly jobService: JobService,
     private readonly slicingService: SlicingService,
     private readonly slicingPropertyService: SlicingPropertyService,
     private readonly slicingQueueService: SlicingQueueService
   ) {
-    effect(() =>
-      this.slicingService
-        .getSlicingResultBySourceId(this.model().resourceId)
-        .pipe(tap((res) => this.slicingResults.set(res)))
-        .subscribe()
-    );
+    effect(() => {
+      if (!!this.model()?.resourceId) {
+        this.slicingService
+          .getSlicingResultBySourceId(this.model()?.resourceId)
+          .pipe(tap((res) => this.slicingResults.set(res)))
+          .subscribe();
+      }
+    });
 
     effect(() =>
       this.slicingPropertyService
@@ -92,6 +97,28 @@ export class ModelDetailTabsComponent {
         })),
         switchMap((request: SlicingQueueCreateDto) =>
           this.slicingQueueService.enqueueSlicing(request)
+        )
+      )
+      .subscribe();
+  }
+
+  protected onStartPrint(slicingId: string): void {
+    this.ref = this.dialogService.open(PrinterStartComponent, {
+      header: 'Start Print',
+      modal: true,
+      closeOnEscape: true,
+      closable: true,
+      width: '800px',
+    });
+
+    this.ref.onClose
+      .pipe(
+        filter((printerId) => printerId !== null),
+        switchMap((printerId: string) =>
+          this.jobService.startPrint({
+            slicingId,
+            printerId,
+          })
         )
       )
       .subscribe();
